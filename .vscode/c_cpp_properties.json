@@ -1,0 +1,41 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/cube_dfu/Core/Inc",
+                "${workspaceFolder}/cube_dfu/Drivers/STM32H7xx_HAL_Driver/**",
+                "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc",
+                "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+                "${workspaceFolder}/cube_dfu/USB_DEVICE/App",
+                "${workspaceFolder}/cube_dfu/USB_DEVICE/Target",
+                "${workspaceFolder}/cube_dfu/Drivers/CMSIS/Device/ST/STM32H7xx/Include",
+                "${workspaceFolder}/cube_dfu/Drivers/CMSIS/Include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "linux-clang-x64"
+        },
+        {
+            "name": "Macos",
+            "includePath": [
+                "${workspaceFolder}/cube_dfu/Core/Inc",
+                "${workspaceFolder}/cube_dfu/Drivers/STM32H7xx_HAL_Driver/Inc",
+                "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc",
+                "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+                "${workspaceFolder}/cube_dfu/USB_DEVICE/App",
+                "${workspaceFolder}/cube_dfu/USB_DEVICE/Target",
+                "${workspaceFolder}/cube_dfu/Drivers/CMSIS/Device/ST/STM32H7xx/Include",
+                "${workspaceFolder}/cube_dfu/Drivers/CMSIS/Include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "linux-clang-x64"
+        }
+    ],
+    "version": 4
+}
