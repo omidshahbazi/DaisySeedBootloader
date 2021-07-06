@@ -50,7 +50,7 @@ extern "C" {
 #endif /* USBD_DFU_XFER_SIZE */
 
 #ifndef USBD_DFU_APP_DEFAULT_ADD
-#define USBD_DFU_APP_DEFAULT_ADD       0x08008000U /* The first sector (32 KB) is reserved for DFU code */
+#define USBD_DFU_APP_DEFAULT_ADD       0x90000000U /* The first sector (32 KB) is reserved for DFU code */
 #endif /* USBD_DFU_APP_DEFAULT_ADD */
 
 #define USB_DFU_CONFIG_DESC_SIZ        (18U + (9U * USBD_DFU_MAX_ITF_NUM))

@@ -56,6 +56,9 @@ EndBSPDependencies */
 #include "usbd_dfu.h"
 #include "usbd_ctlreq.h"
 
+#ifndef USBD_SUPPORT_USER_STRING_DESC
+#define USBD_SUPPORT_USER_STRING_DESC 1U
+#endif
 
 /** @addtogroup STM32_USB_DEVICE_LIBRARY
   * @{
