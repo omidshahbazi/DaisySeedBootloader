@@ -3,8 +3,8 @@
 #include "dfu.h"
 #include "per/qspi.h"
 
+#include "usbd_def.h"
 #include "usbd_desc.h"
-
 #include "usbd_dfu.h"
 #include "usbd_dfu_if.h"
 
@@ -13,6 +13,7 @@ using namespace daisy;
 extern "C"
 {
     USBD_HandleTypeDef hUsbDeviceFS;
+    extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 }
 
 class DFUHandle::Impl {
@@ -32,13 +33,14 @@ class DFUHandle::Impl {
     private:
 
         void VerifyQspiMode(QSPIHandle::Config::Mode mode);
-
+        static constexpr uint32_t addr_offset_ = 0x90000000U;
+        static constexpr uint32_t sector_size_ = 0x10000U;
         QSPIHandle* qspi_;
 };
 
 // Global dfu handle
 DFUHandle::Impl dfu_impl;
-uint8_t DSY_QSPI_TEXT qspi_buffer[TEST_LEN];
+uint8_t DSY_QSPI_BSS qspi_buffer[TEST_LEN];
 
 void DFUHandle::Impl::VerifyQspiMode(QSPIHandle::Config::Mode mode)
 {
@@ -93,14 +95,16 @@ DFUHandle::Result DFUHandle::Impl::MemoryDeinit()
 DFUHandle::Result DFUHandle::Impl::MemoryErase(uint32_t Add)
 {
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
-    qspi_->Erase(Add, Add + 4096);
+    Add -= addr_offset_;
+    qspi_->Erase(Add, Add + sector_size_);
     return Result::OK;
 }
 
 DFUHandle::Result DFUHandle::Impl::MemoryWrite(uint8_t *src, uint8_t *dest, uint32_t Len)
 {
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
-    qspi_->Write(*dest, Len, src);
+    uint32_t write_addr = (uint32_t) dest - addr_offset_;
+    qspi_->Write(write_addr, Len, src);
     return Result::OK;
 }
 
@@ -117,15 +121,25 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
     switch (Cmd)
     {
         case DFU_MEDIA_PROGRAM:
+        buffer[0] = 0;  // bStatus (0 = OK) TODO -- make this actually check the status
         // I'm assuming this is little-endian
         // 3 -> 3 milliseconds (0.2 typ page program * 16 (= 4096 bytes))
-        buffer[0] = 3;
+        buffer[1] = 3;  // bwPollTimeout 0
+        buffer[2] = 0;  // bwPollTimeout 1
+        buffer[3] = 0;  // bwPollTimeout 2
+        buffer[4] = 4;  // bState (4 = dfuDNBUSY)
+        buffer[5] = 0;  // no state string
         break;
 
         default:
         case DFU_MEDIA_ERASE:
-        // 45 milliseconds typ 4k erase
-        buffer[0] = 45;
+        // 150 milliseconds typ 64k erase
+        buffer[0] = 0;   // bStatus (0 = OK) TODO -- make this actually check the status
+        buffer[1] = 150; // bwPollTimeout 0
+        buffer[2] = 0;   // bwPollTimeout 1
+        buffer[3] = 0;   // bwPollTimeout 2
+        buffer[4] = 4;   // bState (4 = dfuDNBUSY)
+        buffer[5] = 0;   // no state string
         break;
     }
     return Result::OK;
@@ -133,8 +147,9 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
 
 extern "C" 
 {
-
-    #define FLASH_DESC_STR "@Internal Flash   /0x08000000/03*016Ka,01*016Kg,01*064Kg,07*128Kg,04*016Kg,01*064Kg,07*128Kg"
+    // NOTE -- 64 sectors of 64kB is exactly half the chip. The starting
+    // address, 0x90080000, gives 8 64kB sectors for whatever we want there
+    #define FLASH_INT_STR "@Flash /0x90000000/64*64Kg"
 
     uint16_t MEM_If_Init_FS(void);
     uint16_t MEM_If_Erase_FS(uint32_t Add);
@@ -145,7 +160,7 @@ extern "C"
 
     __ALIGN_BEGIN USBD_DFU_MediaTypeDef USBD_DFU_fops_FS __ALIGN_END =
     {
-        (uint8_t*)FLASH_DESC_STR,
+        (uint8_t*)FLASH_INT_STR,
         MEM_If_Init_FS,
         MEM_If_DeInit_FS,
         MEM_If_Erase_FS,
@@ -217,20 +232,6 @@ extern "C"
     uint16_t MEM_If_GetStatus_FS(uint32_t Add, uint8_t Cmd, uint8_t *buffer)
     {
         return dfu_impl.MemoryStatus(Add, Cmd, buffer);
-        // /* USER CODE BEGIN 5 */
-        // switch (Cmd)
-        // {
-        //     case DFU_MEDIA_PROGRAM:
-
-        //     break;
-
-        //     case DFU_MEDIA_ERASE:
-        //     default:
-
-        //     break;
-        // }
-        // return (USBD_OK);
-        // /* USER CODE END 5 */
     }
 }
 
@@ -242,4 +243,20 @@ DFUHandle::Result DFUHandle::Init(QSPIHandle* qspi)
 {
     pimpl_ = &dfu_impl;
     return pimpl_->Init(qspi);
+}
+
+// IRQ Handler
+extern "C"
+{
+    void OTG_FS_EP1_OUT_IRQHandler(void)
+    {
+        HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
+    }
+
+    void OTG_FS_EP1_IN_IRQHandler(void)
+    {
+        HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
+    }
+
+    void OTG_FS_IRQHandler(void) { HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS); }
 }
