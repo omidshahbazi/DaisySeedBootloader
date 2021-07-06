@@ -46,7 +46,7 @@ extern "C" {
 #endif /* USBD_DFU_MAX_ITF_NUM */
 
 #ifndef USBD_DFU_XFER_SIZE
-#define USBD_DFU_XFER_SIZE             1024U
+#define USBD_DFU_XFER_SIZE             4096U
 #endif /* USBD_DFU_XFER_SIZE */
 
 #ifndef USBD_DFU_APP_DEFAULT_ADD
