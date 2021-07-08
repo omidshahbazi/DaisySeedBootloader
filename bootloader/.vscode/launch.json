@@ -10,14 +10,14 @@
         "-d",
         "${workspaceRoot}"
       ],
-      "executable": "${workspaceRoot}/cube_dfu/build/cube_dfu.elf",
+      "executable": "${workspaceRoot}/build/bootloader.elf",
       "interface": "swd",
       "name": "Cortex Debug",
       "openOCDLaunchCommands": [
         "init",
         "reset init"
       ],
-      "preLaunchTask": "build_debug",
+      "preLaunchTask": "build_all_debug",
       "preRestartCommands": [
         "load",
         "enable breakpoint",
