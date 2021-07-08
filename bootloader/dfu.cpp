@@ -7,13 +7,17 @@
 #include "usbd_desc.h"
 #include "usbd_dfu.h"
 #include "usbd_dfu_if.h"
+#include "system.h"
 
 using namespace daisy;
+
+#define DSY_EXEC __attribute__((section( ".sram_exec")))
 
 extern "C"
 {
     USBD_HandleTypeDef hUsbDeviceFS;
     extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+    void load_program();
 }
 
 class DFUHandle::Impl {
@@ -30,17 +34,21 @@ class DFUHandle::Impl {
         Result MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len);
         Result MemoryStatus(uint32_t Add, uint8_t Cmd, uint8_t *buffer);
 
+        void LoadProgram();
+
     private:
 
         void VerifyQspiMode(QSPIHandle::Config::Mode mode);
         static constexpr uint32_t addr_offset_ = 0x90000000U;
         static constexpr uint32_t sector_size_ = 0x10000U;
+        size_t data_written_;
         QSPIHandle* qspi_;
 };
 
 // Global dfu handle
 DFUHandle::Impl dfu_impl;
 uint8_t DSY_QSPI_BSS qspi_buffer[TEST_LEN];
+uint8_t DSY_EXEC sram_program[TEST_LEN];
 
 void DFUHandle::Impl::VerifyQspiMode(QSPIHandle::Config::Mode mode)
 {
@@ -73,11 +81,11 @@ DFUHandle::Result DFUHandle::Impl::Init(QSPIHandle* qspi)
     qspi_ = qspi;
 
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
+    data_written_ = 0;
 
     return Result::OK;
 }
 
-// These two methods are questionable -- this might not be the desired behavior
 DFUHandle::Result DFUHandle::Impl::MemoryInit()
 {
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
@@ -90,8 +98,6 @@ DFUHandle::Result DFUHandle::Impl::MemoryDeinit()
     return Result::OK;
 }
 
-// TODO -- erasing in 4k chunks is significantly slower
-// than doing so in 32k
 DFUHandle::Result DFUHandle::Impl::MemoryErase(uint32_t Add)
 {
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
@@ -105,6 +111,7 @@ DFUHandle::Result DFUHandle::Impl::MemoryWrite(uint8_t *src, uint8_t *dest, uint
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
     uint32_t write_addr = (uint32_t) dest - addr_offset_;
     qspi_->Write(write_addr, Len, src);
+    data_written_ += Len;
     return Result::OK;
 }
 
@@ -143,6 +150,50 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
         break;
     }
     return Result::OK;
+}
+
+void DFUHandle::Impl::LoadProgram()
+{
+    VerifyQspiMode(QSPIHandle::Config::Mode::DSY_MEMORY_MAPPED);
+    for (size_t i = 0; i < data_written_; i++)
+    {
+        sram_program[i] = qspi_buffer[i];
+    }
+
+    __DSB();
+    SCB_DisableDCache();
+    SCB_DisableICache();
+
+    //shut down any tasks running
+    // TODO -- stop all processes here (usb, etc.)
+    HAL_RCC_DeInit();
+    qspi_->Deinit();
+    // HAL_DeInit(); NOTE -- this causes the program to fail!
+
+    SysTick->CTRL = 0;
+    SysTick->LOAD = 0;
+    SysTick->VAL = 0;
+
+    //disbale interuppts
+    __set_PRIMASK(1);
+    __disable_irq();
+
+    // Loading address where we'll execute the program
+    asm volatile("mov r1, #0x2404");
+    asm volatile("lsl r1, #16");
+
+    // No need to set the stack pointer, MSP, 
+    // or VTOR, since the startup
+    // routine does that anyway
+
+    // The program binary stores the entry
+    // point in the second 4-byte word, so
+    // we load that into the register we'll
+    // use to jump
+    asm volatile("ldr r2, [r1, #4]");
+
+    // Branch to the value in r2
+    asm volatile("bx r2");
 }
 
 extern "C" 
@@ -232,6 +283,11 @@ extern "C"
     uint16_t MEM_If_GetStatus_FS(uint32_t Add, uint8_t Cmd, uint8_t *buffer)
     {
         return dfu_impl.MemoryStatus(Add, Cmd, buffer);
+    }
+
+    void load_program()
+    {
+        dfu_impl.LoadProgram();
     }
 }
 

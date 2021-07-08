@@ -14,7 +14,7 @@ int main(void)
 	dfu.Init(&hw.qspi);
 
 	while(1) {
-		bool blink = System::GetNow() & (1 << 10);
-		hw.SetLed(blink);
+		// bool blink = System::GetNow() & (1 << 10);
+		// hw.SetLed(blink);
 	}
 }

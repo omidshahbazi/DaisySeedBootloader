@@ -1092,10 +1092,13 @@ static void DFU_Leave(USBD_HandleTypeDef *pdev)
     hdfu->dev_status[4] = hdfu->dev_state;
 
     /* Disconnect the USB device */
-    (void)USBD_Stop(pdev);
+    // (void)USBD_Stop(pdev);
 
+    load_program();
     /* Generate system reset to allow jumping to the user code */
-    NVIC_SystemReset();
+    // NVIC_SystemReset();
+
+
 
     /* The next instructions will not be reached (system reset) */
   }

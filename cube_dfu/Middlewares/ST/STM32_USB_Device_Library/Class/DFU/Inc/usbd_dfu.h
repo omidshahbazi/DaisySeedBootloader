@@ -25,6 +25,8 @@
 extern "C" {
 #endif
 
+extern void load_program();
+
 /* Includes ------------------------------------------------------------------*/
 #include  "usbd_ioreq.h"
 
