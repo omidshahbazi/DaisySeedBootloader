@@ -11,8 +11,6 @@
 
 using namespace daisy;
 
-#define DSY_EXEC __attribute__((section( ".sram_exec")))
-
 extern "C"
 {
     USBD_HandleTypeDef hUsbDeviceFS;
@@ -47,8 +45,9 @@ class DFUHandle::Impl {
 
 // Global dfu handle
 DFUHandle::Impl dfu_impl;
-uint8_t DSY_QSPI_BSS qspi_buffer[TEST_LEN];
-uint8_t DSY_EXEC sram_program[TEST_LEN];
+uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
+uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE];
+uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
 void DFUHandle::Impl::VerifyQspiMode(QSPIHandle::Config::Mode mode)
 {
@@ -157,7 +156,10 @@ void DFUHandle::Impl::LoadProgram()
     VerifyQspiMode(QSPIHandle::Config::Mode::DSY_MEMORY_MAPPED);
     for (size_t i = 0; i < data_written_; i++)
     {
-        sram_program[i] = qspi_buffer[i];
+        if (i < SRAM_SPACE)
+            sram_program[i] = qspi_buffer[i];
+        else
+            itcmram_program[i - SRAM_SPACE] = qspi_buffer[i];
     }
 
     __DSB();
@@ -168,7 +170,7 @@ void DFUHandle::Impl::LoadProgram()
     // TODO -- stop all processes here (usb, etc.)
     HAL_RCC_DeInit();
     qspi_->Deinit();
-    // HAL_DeInit(); NOTE -- this causes the program to fail!
+    // HAL_DeInit(); // NOTE -- this causes the program to fail!
 
     SysTick->CTRL = 0;
     SysTick->LOAD = 0;
@@ -179,9 +181,22 @@ void DFUHandle::Impl::LoadProgram()
     __disable_irq();
 
     // Loading address where we'll execute the program
-    asm volatile("mov r1, #0x2404");
+    asm volatile(
+        "mov r1, %0"
+        :
+        : "n"((EXEC_START >> 16) & 0xFFFF)
+    );
+
     asm volatile("lsl r1, #16");
 
+    // The lower two bytes will probably always
+    // be zero, but just in case...
+    asm volatile(
+        "orr r1, %0"
+        :
+        : "n"(EXEC_START & 0xFFFF)
+    );
+    
     // No need to set the stack pointer, MSP, 
     // or VTOR, since the startup
     // routine does that anyway
@@ -198,9 +213,12 @@ void DFUHandle::Impl::LoadProgram()
 
 extern "C" 
 {
-    // NOTE -- 64 sectors of 64kB is exactly half the chip. The starting
-    // address, 0x90080000, gives 8 64kB sectors for whatever we want there
-    #define FLASH_INT_STR "@Flash /0x90000000/64*64Kg"
+    // The chip is split into 3 regions -- the first 256k is broken into 64 4K 
+    // segments so smaller portions can be rewritten if necessary (say we need
+    // a lookup table or something). The rest of the chip is split in two because
+    // this memory layout syntax is very limited, and the number of segments
+    // can only be two digits (so 124*64Kg is't possible).
+    #define FLASH_INT_STR "@Flash /0x90000000/64*4Kg/0x90040000/60*64Kg/0x90400000/60*64Kg"
 
     uint16_t MEM_If_Init_FS(void);
     uint16_t MEM_If_Erase_FS(uint32_t Add);

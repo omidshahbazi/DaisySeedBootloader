@@ -6,4 +6,4 @@
 
 ## Description
 
-<!-- Describe your example here -->
+You can use this to print out byte data from the qspi as characters.

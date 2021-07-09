@@ -1,4 +1,4 @@
 [submodule "libDaisy"]
 	path = libDaisy
 	url = https://github.com/CorvusPrudens/libDaisy
-	branch = qspi_cpp
+	branch = dfu_compatible

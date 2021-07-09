@@ -1,5 +1,5 @@
 #ifndef DSY_DFU
-#define DSY_DFU /**< Macro */
+#define DSY_DFU
 
 #include <cstdint>
 #include "per/qspi.h"
@@ -10,7 +10,13 @@ namespace daisy
 @{
 */
 
-#define TEST_LEN 8192
+#define SRAM_SPACE    0x80000U
+#define ITCMRAM_SPACE 0x10000U
+#define PROGRAM_SPACE SRAM_SPACE + ITCMRAM_SPACE
+#define EXEC_START    0x24000000U
+
+#define DSY_SRAM_EXEC    __attribute__((section( ".sram_exec")))
+#define DSY_ITCMRAM_EXEC __attribute__((section( ".itcmram_exec")))
 
 /** 
    Driver for DFU interactions. 
