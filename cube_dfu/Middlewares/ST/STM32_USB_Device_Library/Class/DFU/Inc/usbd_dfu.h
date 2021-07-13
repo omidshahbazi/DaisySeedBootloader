@@ -25,7 +25,7 @@
 extern "C" {
 #endif
 
-extern void load_program();
+extern void enable_jump();
 
 /* Includes ------------------------------------------------------------------*/
 #include  "usbd_ioreq.h"

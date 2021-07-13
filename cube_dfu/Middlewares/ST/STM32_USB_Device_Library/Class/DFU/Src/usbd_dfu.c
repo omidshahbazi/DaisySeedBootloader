@@ -1094,7 +1094,8 @@ static void DFU_Leave(USBD_HandleTypeDef *pdev)
     /* Disconnect the USB device */
     // (void)USBD_Stop(pdev);
 
-    load_program();
+    enable_jump();
+    // load_program();
     /* Generate system reset to allow jumping to the user code */
     // NVIC_SystemReset();
 

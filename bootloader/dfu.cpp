@@ -1,7 +1,7 @@
 #include <cstdint>
 
 #include "dfu.h"
-#include "per/qspi.h"
+#include "daisy_seed.h"
 
 #include "usbd_def.h"
 #include "usbd_desc.h"
@@ -15,7 +15,7 @@ extern "C"
 {
     USBD_HandleTypeDef hUsbDeviceFS;
     extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
-    void load_program();
+    void enable_jump();
 }
 
 class DFUHandle::Impl {
@@ -23,7 +23,7 @@ class DFUHandle::Impl {
         Impl() {}
         ~Impl() {}
 
-        Result Init(QSPIHandle* qspi);
+        Result Init(DaisySeed* seed);
 
         Result MemoryInit();
         Result MemoryDeinit();
@@ -33,14 +33,15 @@ class DFUHandle::Impl {
         Result MemoryStatus(uint32_t Add, uint8_t Cmd, uint8_t *buffer);
 
         void LoadProgram();
+        bool ready_to_jump;
 
     private:
-
+        Result Deinit();
         void VerifyQspiMode(QSPIHandle::Config::Mode mode);
         static constexpr uint32_t addr_offset_ = 0x90000000U;
         static constexpr uint32_t sector_size_ = 0x10000U;
         size_t data_written_;
-        QSPIHandle* qspi_;
+        DaisySeed* hw_;
 };
 
 // Global dfu handle
@@ -51,15 +52,15 @@ uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
 void DFUHandle::Impl::VerifyQspiMode(QSPIHandle::Config::Mode mode)
 {
-    if (qspi_->GetConfig().mode != mode)
+    if (hw_->qspi.GetConfig().mode != mode)
     {
-        QSPIHandle::Config config = qspi_->GetConfig();
+        auto config = hw_->qspi.GetConfig();
         config.mode = mode;
-        qspi_->Init(config);
+        hw_->qspi.Init(config);
     }
 }
 
-DFUHandle::Result DFUHandle::Impl::Init(QSPIHandle* qspi)
+DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
 {
     if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
     {
@@ -77,10 +78,31 @@ DFUHandle::Result DFUHandle::Impl::Init(QSPIHandle* qspi)
     {
         return Result::ERR;
     }
-    qspi_ = qspi;
+    HAL_PWREx_EnableUSBVoltageDetector();
+
+    hw_ = seed;
 
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
     data_written_ = 0;
+    ready_to_jump = false;
+
+    return Result::OK;
+}
+
+DFUHandle::Result DFUHandle::Impl::Deinit()
+{
+    if (USBD_DeInit(&hUsbDeviceFS) != USBD_OK)
+        return Result::ERR;
+    HAL_PWREx_DisableUSBVoltageDetector();
+
+    __DSB();
+
+    // TODO -- create mechanism to ensure the
+    // deinit happens after USB disconnect so
+    // the disconnect can happen without hanging
+    System::DelayUs(50000);
+
+    hw_->Deinit();
 
     return Result::OK;
 }
@@ -101,7 +123,7 @@ DFUHandle::Result DFUHandle::Impl::MemoryErase(uint32_t Add)
 {
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
     Add -= addr_offset_;
-    qspi_->Erase(Add, Add + sector_size_);
+    hw_->qspi.Erase(Add, Add + sector_size_);
     return Result::OK;
 }
 
@@ -109,7 +131,7 @@ DFUHandle::Result DFUHandle::Impl::MemoryWrite(uint8_t *src, uint8_t *dest, uint
 {
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
     uint32_t write_addr = (uint32_t) dest - addr_offset_;
-    qspi_->Write(write_addr, Len, src);
+    hw_->qspi.Write(write_addr, Len, src);
     data_written_ += Len;
     return Result::OK;
 }
@@ -154,6 +176,10 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
 void DFUHandle::Impl::LoadProgram()
 {
     VerifyQspiMode(QSPIHandle::Config::Mode::DSY_MEMORY_MAPPED);
+    // For now, this assumes a program was actually written. We'll
+    // need a mechanism to load a program from flash that may have
+    // previously been written. Reading and writing the entire
+    // possible program length is probably just fine.
     for (size_t i = 0; i < data_written_; i++)
     {
         if (i < SRAM_SPACE)
@@ -161,54 +187,21 @@ void DFUHandle::Impl::LoadProgram()
         else
             itcmram_program[i - SRAM_SPACE] = qspi_buffer[i];
     }
-
-    __DSB();
-    SCB_DisableDCache();
-    SCB_DisableICache();
-
-    //shut down any tasks running
-    // TODO -- stop all processes here (usb, etc.)
-    HAL_RCC_DeInit();
-    qspi_->Deinit();
-    // HAL_DeInit(); // NOTE -- this causes the program to fail!
-
-    SysTick->CTRL = 0;
-    SysTick->LOAD = 0;
-    SysTick->VAL = 0;
-
-    //disbale interuppts
-    __set_PRIMASK(1);
-    __disable_irq();
-
-    // Loading address where we'll execute the program
-    asm volatile(
-        "mov r1, %0"
-        :
-        : "n"((EXEC_START >> 16) & 0xFFFF)
-    );
-
-    asm volatile("lsl r1, #16");
-
-    // The lower two bytes will probably always
-    // be zero, but just in case...
-    asm volatile(
-        "orr r1, %0"
-        :
-        : "n"(EXEC_START & 0xFFFF)
-    );
     
-    // No need to set the stack pointer, MSP, 
-    // or VTOR, since the startup
-    // routine does that anyway
+    Deinit();
 
-    // The program binary stores the entry
-    // point in the second 4-byte word, so
-    // we load that into the register we'll
-    // use to jump
-    asm volatile("ldr r2, [r1, #4]");
+    // disable interupts NOTE -- neither of these are reset 
+    // by the Reset_Handler or any initialization, causing errors
+    // __set_PRIMASK(1);
+    // __disable_irq();
 
-    // Branch to the value in r2
-    asm volatile("bx r2");
+    typedef void (*EntryPoint)(void);
+
+    uint32_t application_address = *(__IO uint32_t*)(EXEC_START + 4);
+    EntryPoint application = (EntryPoint)(application_address);
+    SCB->VTOR = EXEC_START;
+    __set_MSP(*(__IO uint32_t*)EXEC_START);
+    application();
 }
 
 extern "C" 
@@ -303,9 +296,9 @@ extern "C"
         return dfu_impl.MemoryStatus(Add, Cmd, buffer);
     }
 
-    void load_program()
+    void enable_jump()
     {
-        dfu_impl.LoadProgram();
+        dfu_impl.ready_to_jump = true;
     }
 }
 
@@ -313,10 +306,16 @@ extern "C"
 // DFUHandle::Impl -> DFUHandle                 
 /////////////////////////////////////////////////
 
-DFUHandle::Result DFUHandle::Init(QSPIHandle* qspi)
+DFUHandle::Result DFUHandle::Init(DaisySeed* seed)
 {
     pimpl_ = &dfu_impl;
-    return pimpl_->Init(qspi);
+    return pimpl_->Init(seed);
+}
+
+void DFUHandle::PollJump()
+{
+    if (pimpl_->ready_to_jump)
+        pimpl_->LoadProgram();
 }
 
 // IRQ Handler

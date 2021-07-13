@@ -2,7 +2,7 @@
 #define DSY_DFU
 
 #include <cstdint>
-#include "per/qspi.h"
+#include "daisy_seed.h"
 
 namespace daisy
 {
@@ -36,7 +36,8 @@ class DFUHandle
 
     };
 
-    Result Init(QSPIHandle* qspi);
+    Result Init(DaisySeed* seed);
+    void   PollJump();
 
     DFUHandle() : pimpl_(nullptr) {}
     DFUHandle(const DFUHandle& other) = default;

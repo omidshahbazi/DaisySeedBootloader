@@ -11,10 +11,9 @@ int main(void)
 	hw.Configure();
 	hw.Init();
 
-	dfu.Init(&hw.qspi);
+	dfu.Init(&hw);
 
 	while(1) {
-		// bool blink = System::GetNow() & (1 << 10);
-		// hw.SetLed(blink);
+		dfu.PollJump();
 	}
 }
