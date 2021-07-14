@@ -33,15 +33,19 @@ class DFUHandle::Impl {
         Result MemoryStatus(uint32_t Add, uint8_t Cmd, uint8_t *buffer);
 
         void LoadProgram();
-        bool ready_to_jump;
+        bool dfu_complete;
+        bool dfu_initiated;
 
     private:
+
         Result Deinit();
         void VerifyQspiMode(QSPIHandle::Config::Mode mode);
         static constexpr uint32_t addr_offset_ = 0x90000000U;
         static constexpr uint32_t sector_size_ = 0x10000U;
+        static constexpr uint32_t expected_stack_ = 0x20020000U;
         size_t data_written_;
         DaisySeed* hw_;
+        
 };
 
 // Global dfu handle
@@ -49,16 +53,6 @@ DFUHandle::Impl dfu_impl;
 uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
 uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE];
 uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
-
-void DFUHandle::Impl::VerifyQspiMode(QSPIHandle::Config::Mode mode)
-{
-    if (hw_->qspi.GetConfig().mode != mode)
-    {
-        auto config = hw_->qspi.GetConfig();
-        config.mode = mode;
-        hw_->qspi.Init(config);
-    }
-}
 
 DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
 {
@@ -84,7 +78,8 @@ DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
 
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
     data_written_ = 0;
-    ready_to_jump = false;
+    dfu_complete = false;
+    dfu_initiated = false;
 
     return Result::OK;
 }
@@ -100,11 +95,21 @@ DFUHandle::Result DFUHandle::Impl::Deinit()
     // TODO -- create mechanism to ensure the
     // deinit happens after USB disconnect so
     // the disconnect can happen without hanging
-    System::DelayUs(50000);
+    System::Delay(50);
 
     hw_->Deinit();
 
     return Result::OK;
+}
+
+void DFUHandle::Impl::VerifyQspiMode(QSPIHandle::Config::Mode mode)
+{
+    if (hw_->qspi.GetConfig().mode != mode)
+    {
+        auto config = hw_->qspi.GetConfig();
+        config.mode = mode;
+        hw_->qspi.Init(config);
+    }
 }
 
 DFUHandle::Result DFUHandle::Impl::MemoryInit()
@@ -121,6 +126,9 @@ DFUHandle::Result DFUHandle::Impl::MemoryDeinit()
 
 DFUHandle::Result DFUHandle::Impl::MemoryErase(uint32_t Add)
 {
+    // DFU download has begun, so we shouldn't allow a jump
+    // to happen before it completes
+    dfu_initiated = true;
     VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
     Add -= addr_offset_;
     hw_->qspi.Erase(Add, Add + sector_size_);
@@ -176,25 +184,35 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
 void DFUHandle::Impl::LoadProgram()
 {
     VerifyQspiMode(QSPIHandle::Config::Mode::DSY_MEMORY_MAPPED);
-    // For now, this assumes a program was actually written. We'll
-    // need a mechanism to load a program from flash that may have
-    // previously been written. Reading and writing the entire
-    // possible program length is probably just fine.
-    for (size_t i = 0; i < data_written_; i++)
+    
+    // If the stack pointer isn't here, then either the
+    // download failed or was invalid, or a program
+    // has never been written to flash
+    uint32_t* stack_ptr = (uint32_t*) qspi_buffer;
+    if (*stack_ptr != expected_stack_)
     {
-        if (i < SRAM_SPACE)
-            sram_program[i] = qspi_buffer[i];
-        else
-            itcmram_program[i - SRAM_SPACE] = qspi_buffer[i];
+        dfu_complete = false;
+        dfu_initiated = false;
+        return;
+    }
+
+    // TODO -- integrate itcmram
+    for (size_t i = 0; i < SRAM_SPACE; i++)
+    {
+        // if (i < SRAM_SPACE)
+        sram_program[i] = qspi_buffer[i];
+        // else
+        //     itcmram_program[i - SRAM_SPACE] = qspi_buffer[i];
     }
     
     Deinit();
 
-    // disable interupts NOTE -- neither of these are reset 
-    // by the Reset_Handler or any initialization, causing errors
+    // disable interupts NOTE -- These two seem to cause
+    // errors for the target application
     // __set_PRIMASK(1);
     // __disable_irq();
-
+    RCC->CIER = 0x00000000;
+    
     typedef void (*EntryPoint)(void);
 
     uint32_t application_address = *(__IO uint32_t*)(EXEC_START + 4);
@@ -298,7 +316,7 @@ extern "C"
 
     void enable_jump()
     {
-        dfu_impl.ready_to_jump = true;
+        dfu_impl.dfu_complete = true;
     }
 }
 
@@ -308,14 +326,45 @@ extern "C"
 
 DFUHandle::Result DFUHandle::Init(DaisySeed* seed)
 {
+    state_ = State::WAITING_ON_TIMEOUT;
+    timeout_start_ = System::GetNow();
+
+    pwm_tick_ = timeout_start_;
+    angle_ = 0;
+
+    hw_ = seed;
     pimpl_ = &dfu_impl;
     return pimpl_->Init(seed);
 }
 
 void DFUHandle::PollJump()
 {
-    if (pimpl_->ready_to_jump)
+    // Prevents a jump during DFU download
+    if (pimpl_->dfu_initiated)
+        state_ = State::WAITING_ON_DFU;
+
+    bool timeout_elapsed = System::GetNow() - timeout_start_ > timeout_;
+    if (pimpl_->dfu_complete || (timeout_elapsed && state_ == State::WAITING_ON_TIMEOUT))
+    {
         pimpl_->LoadProgram();
+        // If we get here, then the program failed to load, meaning
+        // there's likely no program in flash
+        state_ = State::WAITING_ON_DFU;
+    }
+        
+    SineLed();
+}
+
+void DFUHandle::SineLed()
+{
+    uint32_t time = System::GetNow();
+    if (time > pwm_tick_)
+    {
+        pwm_tick_ = time;
+        angle_ += (2 * M_PI / 1000.f) / sine_hz_;
+        bool led = sin(angle_) * sine_fid_ + sine_fid_ - 1 > time % (sine_fid_ * 2);
+        hw_->SetLed(led);   
+    }
 }
 
 // IRQ Handler
