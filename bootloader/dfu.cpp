@@ -183,6 +183,12 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
 
 void DFUHandle::Impl::LoadProgram()
 {
+    // The data caching can cause issues if we've recently
+    // read QSPI and found no program in there, and then
+    // actually write a program there and try to load it.
+    SCB_InvalidateDCache();
+    __DSB();
+
     VerifyQspiMode(QSPIHandle::Config::Mode::DSY_MEMORY_MAPPED);
     
     // If the stack pointer isn't here, then either the
@@ -191,8 +197,12 @@ void DFUHandle::Impl::LoadProgram()
     uint32_t* stack_ptr = (uint32_t*) qspi_buffer;
     if (*stack_ptr != expected_stack_)
     {
-        dfu_complete = false;
-        dfu_initiated = false;
+        if (dfu_complete)
+        {
+            // this means the DFU transaction occurred, but we downloaded
+            // bad data. This requires a restart to reset the DFU state machine
+            HAL_NVIC_SystemReset();
+        }
         return;
     }
 

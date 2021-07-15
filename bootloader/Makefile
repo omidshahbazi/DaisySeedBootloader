@@ -17,12 +17,13 @@ C_INCLUDES += \
 
 LDSCRIPT = boot_linker.lds
 
+# WARNING -- an opt of -O3 causes the jump to fail
+OPT = -O0
+
 # CFLAGS += -DUSBD_SUPPORT_USER_STRING_DESC=1
 
 # Library Locations
 LIBDAISY_DIR = ../libDaisy
-
-OPT = -O0
 
 # Core location, and generic Makefile.
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core

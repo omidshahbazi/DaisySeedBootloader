@@ -11,10 +11,8 @@
       ],
       "includePath": [
         "${workspaceFolder}/**",
-        "${workspaceFolder}/../libDaisy/**",
-        "${workspaceFolder}/../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/**",
-        "${workspaceFolder}/../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/**",
-        "${workspaceFolder}/../cube_dfu/USB_DEVICE/**"
+        "${workspaceFolder}/../libdaisy/**",
+        "${workspaceFolder}/../DaisySP/**"
       ],
       "name": "Win32",
       "windowsSdkVersion": "10.0.17763.0"
@@ -31,9 +29,7 @@
       "includePath": [
         "${workspaceFolder}/**",
         "${workspaceFolder}/../libDaisy/**",
-        "${workspaceFolder}/../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/**",
-        "${workspaceFolder}/../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/**",
-        "${workspaceFolder}/../cube_dfu/USB_DEVICE/**"
+        "${workspaceFolder}/../DaisySP/**"
       ],
       "name": "macOS"
     }

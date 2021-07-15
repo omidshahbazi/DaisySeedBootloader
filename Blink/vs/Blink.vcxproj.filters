@@ -21,16 +21,16 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\tester.cpp">
+    <ClCompile Include="..\Blink.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
     <None Include="stm32.props">
       <Filter>Source files\Device-specific files</Filter>
     </None>
-    <None Include="tester-Debug.vgdbsettings">
+    <None Include="Blink-Debug.vgdbsettings">
       <Filter>VisualGDB settings</Filter>
     </None>
-    <None Include="tester-Release.vgdbsettings">
+    <None Include="Blink-Release.vgdbsettings">
       <Filter>VisualGDB settings</Filter>
     </None>
     <None Include="stm32.xml">

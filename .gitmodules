@@ -2,3 +2,6 @@
 	path = libDaisy
 	url = https://github.com/CorvusPrudens/libDaisy
 	branch = dfu_compatible
+[submodule "DaisySP"]
+	path = DaisySP
+	url = https://github.com/electro-smith/DaisySP

@@ -1,14 +1,15 @@
 # ES_QSPI_Bootloader
 
-This project can be built with the top-level makefile or with VSCode tasks. You can do something like the following to build and upload in MIDI mode:
+This project is organized into dependencies (cube_dfu, DaisySP, and libDaisy), the bootloader application (bootloader), and various target applications. When building the bootloader, make sure libDaisy is build _without_ SRAM defined. When building target applications, make sure SRAM _is_ defined (i.e. build SRAM=, or by using the VSCode task build_libdaisy_sram).
+
+To upload to the bootloader, use the program-sram target. It should produce the following command:
 
 ~~~ bash
-make 
-make upload-dfu
+dfu-util -a 0 -s 0x90040000:leave -D build/Blink.bin -d ,0483:df11
 ~~~
-
-This project has also been set up for debugging. Hitting F5 should do the trick ;). As long as the Daisy has previously enumerated itself to the host (and you didn't physically disconnect the board), you should be able to do debugging with a successful USB connection no problem.
 
 ## Progress
 
-- Set up a project and build environment for a DFU program. Cube's abstractions are _somewhat_ helpful in this case, largely existing in the `usb_dfu_if.c` file. I think that's where most of our logic can go for writing to spi flash.
+- The base functionality is fully working. Now we need to settle on an interaction schema.
+- NOTE -- an opt of `-O3` for the bootloader causes the jump to fail. I suspect it's an issue with the jump itself, and not any preceding code. If so, expressing it in assembly could fix that, at the cost of readability.
+- NOTE -- the dfu class really needs a solid way of ensuring the USB is disconnected before jumping. If you try to jump before it's disconnected (and in the process disable interrupts), then the program will hang on a `HAL_Delay` call made by the LL usb drivers. Probably the best thing to do would be to have some flag set by the USD disconnect function in the HAL drivers that we can reference in our code. Yes, it does require modifying HAL stuff, but we don't have to rely on any hacky delays or anything. 

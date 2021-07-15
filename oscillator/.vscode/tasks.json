@@ -111,6 +111,12 @@
       "type": "shell"
     },
     {
+      "command": "make program-sram",
+      "label": "program-sram",
+      "problemMatcher": [],
+      "type": "shell"
+    },
+    {
       "command": "make program",
       "label": "program",
       "problemMatcher": [],

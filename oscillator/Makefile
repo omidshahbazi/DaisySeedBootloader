@@ -1,12 +1,17 @@
 # Project Name
-TARGET = tester
+TARGET = oscillator
 
 # Sources
-CPP_SOURCES = tester.cpp
+CPP_SOURCES = oscillator.cpp
 
 # Library Locations
-LIBDAISY_DIR = ../libDaisy
+LIBDAISY_DIR ?= ../libDaisy
+DAISYSP_DIR ?= ../DaisySP
+
+# Linker
+LDSCRIPT = sram_linker.lds
 
 # Core location, and generic Makefile.
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
+

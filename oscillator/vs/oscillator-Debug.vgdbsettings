@@ -20,7 +20,7 @@
         <Revision>2</Revision>
       </Version>
     </ToolchainID>
-    <ProjectFile>tester.vcxproj</ProjectFile>
+    <ProjectFile>oscillator.vcxproj</ProjectFile>
     <RemoteBuildEnvironment>
       <Records />
       <EnvironmentSetupFiles />
