@@ -128,8 +128,8 @@
       "type": "shell"
     },
     {
-      "command": "make clean; make SRAM=1",
-      "label": "build_libdaisy_sram",
+      "command": "make clean; make BOOTLOADED=1",
+      "label": "build_libdaisy_boot",
       "options": {
         "cwd": "${workspaceFolder}/../libDaisy/"
       },

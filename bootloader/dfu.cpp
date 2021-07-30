@@ -181,7 +181,7 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
     return Result::OK;
 }
 
-void DFUHandle::Impl::LoadProgram()
+void _Noreturn DFUHandle::Impl::LoadProgram()
 {
     // The data caching can cause issues if we've recently
     // read QSPI and found no program in there, and then
