@@ -13,6 +13,9 @@ DAISYSP_DIR = ../DaisySP
 # Linker
 LDSCRIPT = sram_linker.lds
 
+# NOTE -- this is necessary to ensure the startup doesn't try to initialize sdram
+C_DEFS += -DBOOT_VOLATILE
+
 # Core location, and generic makefile.
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
