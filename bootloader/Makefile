@@ -18,7 +18,7 @@ C_INCLUDES += \
 LDSCRIPT = boot_linker.lds
 
 # WARNING -- an opt of -O3 causes the jump to fail
-OPT = -O0
+OPT = -O1
 
 # CFLAGS += -DUSBD_SUPPORT_USER_STRING_DESC=1
 

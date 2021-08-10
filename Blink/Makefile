@@ -13,6 +13,8 @@ DAISYSP_DIR = ../DaisySP
 # Linker
 LDSCRIPT = sram_linker.lds
 
+OPT = -O0
+
 # NOTE -- this is necessary to ensure the startup doesn't try to initialize sdram
 C_DEFS += -DBOOT_VOLATILE
 

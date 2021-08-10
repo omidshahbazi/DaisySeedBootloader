@@ -215,6 +215,7 @@ void _Noreturn DFUHandle::Impl::LoadProgram()
         //     itcmram_program[i - SRAM_SPACE] = qspi_buffer[i];
     }
     
+    hw_->SetLed(false);
     Deinit();
 
     // disable interupts NOTE -- These two seem to cause
@@ -223,9 +224,9 @@ void _Noreturn DFUHandle::Impl::LoadProgram()
     // __disable_irq();
     RCC->CIER = 0x00000000;
     
-    typedef void (*EntryPoint)(void);
+    typedef volatile void (*EntryPoint)(void);
 
-    uint32_t application_address = *(__IO uint32_t*)(EXEC_START + 4);
+    volatile uint32_t application_address = *(__IO uint32_t*)(EXEC_START + 4);
     EntryPoint application = (EntryPoint)(application_address);
     SCB->VTOR = EXEC_START;
     __set_MSP(*(__IO uint32_t*)EXEC_START);
