@@ -1,11 +1,10 @@
 # Blink
 
-## Author
+Simple Bootloader Application Test
 
-Shensley
+This will blink the LED at 1 second intervals, while generating a random musical sequence through reverb.
 
-## Description
+The CPU Usage of the callback will be output via USB logging.
 
-Blinks the Seed's onboard LED at a constant rate.
+The Reverb is being run from SDRAM, and is initialized on the heap.
 
-[Source Code](https://github.com/electro-smith/DaisyExamples/tree/master/seed/Blink)
