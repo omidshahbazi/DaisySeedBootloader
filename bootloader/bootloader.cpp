@@ -9,7 +9,7 @@ DFUHandle dfu;
 int main(void)
 {
 	hw.Configure();
-	hw.Init();
+	hw.Init(true);
 
 	dfu.Init(&hw);
 

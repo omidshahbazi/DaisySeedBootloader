@@ -40,9 +40,20 @@ class DFUHandle::Impl {
 
         Result Deinit();
         void VerifyQspiMode(QSPIHandle::Config::Mode mode);
+        uint32_t FillTargetMemory();
+        void SosLed();
         static constexpr uint32_t addr_offset_ = 0x90000000U;
         static constexpr uint32_t sector_size_ = 0x10000U;
         static constexpr uint32_t expected_stack_ = 0x20020000U;
+
+        // TODO -- this should be made as portable as possible, so ideally
+        // these would be defined in a more platform-independent way
+        static constexpr uint32_t sram_start_ = 0x24000000U;
+        static constexpr uint32_t sram_end_ = sram_start_ + 0x80000;
+        static constexpr uint32_t qspi_start_ = 0x90040000U;
+        // TODO -- this is a bit too large:
+        static constexpr uint32_t qspi_end_ = qspi_start_ + 0x800000;
+
         size_t data_written_;
         DaisySeed* hw_;
         
@@ -181,6 +192,60 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
     return Result::OK;
 }
 
+void DFUHandle::Impl::SosLed()
+{
+    // If we get here, the program should block until given a manual reset
+    uint8_t delays[] = {
+        1, 1,
+        1, 1,
+        1, 1,
+        3, 1,
+        3, 1,
+        1, 1,
+        1, 1,
+        1, 1,
+    };
+    bool led = false;
+
+    for (;;) 
+    {
+        for (int i = 0; i < sizeof(delays) / sizeof(delays[0]); i++) 
+        {
+            hw_->SetLed(led);
+            led = !led;
+            hw_->DelayMs(delays[i] * 50);
+        }
+    }
+}
+
+uint32_t DFUHandle::Impl::FillTargetMemory()
+{
+    uint32_t entry_address = *(uint32_t*) (qspi_buffer + 4);
+
+    if (entry_address >= sram_start_ && entry_address < sram_end_)
+    {
+        for (size_t i = 0; i < SRAM_SPACE; i++)
+        {
+            sram_program[i] = qspi_buffer[i];
+        }
+        return sram_start_;
+    }
+    else if (entry_address >= qspi_start_ && entry_address < qspi_end_)
+    {
+        // WARNING -- this will need to change with multi-programs 
+        // (should be the beginning of the program, not the memory)
+        return qspi_start_;
+    }
+    else
+    {
+        // If we got here, then the stack address is valid, but the 
+        // entry point is not, meaning the user should know their
+        // build isn't going to work
+        SosLed();
+    }
+    return 0; // to ward off any compiler complaints
+}
+
 void _Noreturn DFUHandle::Impl::LoadProgram()
 {
     // The data caching can cause issues if we've recently
@@ -201,19 +266,12 @@ void _Noreturn DFUHandle::Impl::LoadProgram()
         {
             // this means the DFU transaction occurred, but we downloaded
             // bad data. This requires a restart to reset the DFU state machine
-            HAL_NVIC_SystemReset();
+            SosLed();
         }
         return;
     }
 
-    // TODO -- integrate itcmram
-    for (size_t i = 0; i < SRAM_SPACE; i++)
-    {
-        // if (i < SRAM_SPACE)
-        sram_program[i] = qspi_buffer[i];
-        // else
-        //     itcmram_program[i - SRAM_SPACE] = qspi_buffer[i];
-    }
+    uint32_t program_start = FillTargetMemory();
     
     hw_->SetLed(false);
     Deinit();
@@ -226,10 +284,10 @@ void _Noreturn DFUHandle::Impl::LoadProgram()
     
     typedef volatile void (*EntryPoint)(void);
 
-    volatile uint32_t application_address = *(__IO uint32_t*)(EXEC_START + 4);
+    volatile uint32_t application_address = *(__IO uint32_t*)(program_start + 4);
     EntryPoint application = (EntryPoint)(application_address);
-    SCB->VTOR = EXEC_START;
-    __set_MSP(*(__IO uint32_t*)EXEC_START);
+    SCB->VTOR = program_start;
+    __set_MSP(*(__IO uint32_t*)program_start);
     application();
 }
 
@@ -239,7 +297,7 @@ extern "C"
     // segments so smaller portions can be rewritten if necessary (say we need
     // a lookup table or something). The rest of the chip is split in two because
     // this memory layout syntax is very limited, and the number of segments
-    // can only be two digits (so 124*64Kg is't possible).
+    // can only be two digits (so 124*64Kg isn't possible).
     #define FLASH_INT_STR "@Flash /0x90000000/64*4Kg/0x90040000/60*64Kg/0x90400000/60*64Kg"
 
     uint16_t MEM_If_Init_FS(void);
