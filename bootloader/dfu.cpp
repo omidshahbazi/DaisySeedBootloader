@@ -191,29 +191,30 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
     }
     return Result::OK;
 }
-
+// TODO -- having issues with bootloader reliability on startup
 void DFUHandle::Impl::SosLed()
 {
     // If we get here, the program should block until given a manual reset
     uint8_t delays[] = {
         1, 1,
         1, 1,
-        1, 1,
+        1, 2,
         3, 1,
         3, 1,
+        3, 2,
         1, 1,
         1, 1,
-        1, 1,
+        1, 5,
     };
-    bool led = false;
+    bool led = true;
 
     for (;;) 
     {
-        for (int i = 0; i < sizeof(delays) / sizeof(delays[0]); i++) 
+        for (unsigned int i = 0; i < sizeof(delays) / sizeof(delays[0]); i++) 
         {
             hw_->SetLed(led);
             led = !led;
-            hw_->DelayMs(delays[i] * 50);
+            hw_->DelayMs(delays[i] * 100);
         }
     }
 }

@@ -25,7 +25,8 @@ namespace daisy
    @brief Presents a DFU device and endpoints to the USB host,
    and downloads an application if initiated within 5 seconds.
    Jumps to existing program after if present. Breathing LED indicates
-   idle bootloader.
+   idle bootloader. An SOS pattern indicates the application is not
+   correctly configured to run from the bootloader.
 */
 class DFUHandle
 {
