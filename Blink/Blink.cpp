@@ -14,7 +14,7 @@ int main(void) {
   led_state = true;
 
   hardware.Configure();
-  hardware.Init(false, DaisySeed::AXI_SRAM);
+  hardware.Init(false, DaisySeed::QSPI);
 
   for (;;) {
 

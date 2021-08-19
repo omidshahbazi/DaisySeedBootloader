@@ -12,7 +12,8 @@ DAISYSP_DIR = ../DaisySP
 
 # Linker
 # LDSCRIPT = sram_linker_sdram.lds
-LDSCRIPT = sram_linker.lds
+# LDSCRIPT = sram_linker.lds
+LDSCRIPT = qspi_linker.lds
 
 #OPT = -O0
 
