@@ -229,6 +229,7 @@ uint32_t DFUHandle::Impl::FillTargetMemory()
         {
             sram_program[i] = qspi_buffer[i];
         }
+        hw_->qspi.Deinit();
         return sram_start_;
     }
     else if (entry_address >= qspi_start_ && entry_address < qspi_end_)
