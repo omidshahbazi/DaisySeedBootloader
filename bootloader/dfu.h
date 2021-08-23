@@ -77,9 +77,12 @@ class DFUHandle
   private:
 
     void SineLed();
+    void HappyBlink();
 
     DaisySeed* hw_;
     Impl* pimpl_;
+
+    Switch boot_button_;
 
     static constexpr uint32_t timeout_ = 5000; // 5 seconds
     uint32_t timeout_start_;

@@ -400,6 +400,9 @@ DFUHandle::Result DFUHandle::Init(DaisySeed* seed)
     state_ = State::WAITING_ON_TIMEOUT;
     timeout_start_ = System::GetNow();
 
+    dsy_gpio_pin button{dsy_gpio_port::DSY_GPIOG, 3};
+    boot_button_.Init(button, 1000, Switch::TYPE_MOMENTARY, Switch::POLARITY_NORMAL, Switch::PULL_NONE);
+
     pwm_tick_ = timeout_start_;
     angle_ = 0;
 
@@ -413,6 +416,14 @@ void DFUHandle::PollJump()
     // Prevents a jump during DFU download
     if (pimpl_->dfu_initiated)
         state_ = State::WAITING_ON_DFU;
+
+    boot_button_.Debounce();
+    if (boot_button_.RisingEdge())
+    {
+        state_ = State::WAITING_ON_DFU;
+        HappyBlink();
+    }
+        
 
     bool timeout_elapsed = System::GetNow() - timeout_start_ > timeout_;
     if (pimpl_->dfu_complete || (timeout_elapsed && state_ == State::WAITING_ON_TIMEOUT))
@@ -435,6 +446,18 @@ void DFUHandle::SineLed()
         angle_ += (2 * M_PI / 1000.f) / sine_hz_;
         bool led = sin(angle_) * sine_fid_ + sine_fid_ - 1 > time % (sine_fid_ * 2);
         hw_->SetLed(led);   
+    }
+}
+
+void DFUHandle::HappyBlink()
+{
+    unsigned int time = 50;
+    for (int i = 0; i < 2; i++)
+    {
+        hw_->SetLed(true);
+        System::Delay(time);
+        hw_->SetLed(false);
+        System::Delay(time);
     }
 }
 
