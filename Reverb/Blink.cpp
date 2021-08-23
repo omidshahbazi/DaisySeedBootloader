@@ -65,7 +65,7 @@ int main(void) {
   // These are separate to allow reconfiguration of any of the internal
   // components before initialization.
   hardware.Configure();
-  hardware.Init(false, DaisySeed::AXI_SRAM);
+  hardware.Init(false);
   hardware.SetAudioBlockSize(4);
   meter.Init(hardware.AudioSampleRate(), hardware.AudioBlockSize());
   osc.Init(hardware.AudioSampleRate());
