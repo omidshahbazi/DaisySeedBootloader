@@ -1,5 +1,5 @@
-#ifndef DSY_DFU
-#define DSY_DFU
+#ifndef DSY_BOOTLOADER
+#define DSY_BOOTLOADER
 
 #include <cstdint>
 #include "daisy_seed.h"
@@ -69,19 +69,34 @@ class Bootloader
      */
     State  GetState() { return state_; }
 
-    Bootloader() : pimpl_(nullptr) {}
     Bootloader(const Bootloader& other) = default;
     Bootloader& operator=(const Bootloader& other) = default;
 
-    class Impl; /**< & */
+    void LoadProgram();
+
+    // TODO -- use System vars when qspi_cpp is merged!
+    static constexpr uint32_t addr_offset = 0x90000000U;
+    static constexpr uint32_t sector_size = 0x10000U;
+    static constexpr uint32_t expected_stack = 0x20020000U;
+
+    static constexpr uint32_t sram_start = 0x24000000U;
+    static constexpr uint32_t sram_end = sram_start + 0x80000;
+    static constexpr uint32_t qspi_start = 0x90040000U;
+
+    // TODO -- this is a bit too large:
+    static constexpr uint32_t qspi_end = qspi_start + 0x800000;
 
   private:
+
 
     void SineLed();
     void HappyBlink();
 
+    Result Deinit();
+    uint32_t FillTargetMemory();
+    void SosLed();
+
     DaisySeed* hw_;
-    Impl* pimpl_;
 
     DFUHandle dfu;
 
@@ -102,4 +117,4 @@ class Bootloader
 
 } // namespace daisy
 
-#endif // DSY_DFU
+#endif // DSY_BOOTLOADER
