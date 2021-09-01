@@ -17,18 +17,13 @@ uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
 Bootloader::Result Bootloader::Init(DaisySeed* seed)
 {
-
-    dfu.Init(seed);
+    // dfu.Init(seed);
     hw_ = seed;
 
-    state_ = State::WAITING_ON_TIMEOUT;
-    timeout_start_ = System::GetNow();
-
-    dsy_gpio_pin button{dsy_gpio_port::DSY_GPIOG, 3};
-    boot_button_.Init(button, 1000, Switch::TYPE_MOMENTARY, Switch::POLARITY_NORMAL, Switch::PULL_NONE);
-
-    pwm_tick_ = timeout_start_;
+    pwm_tick_ = System::GetNow();
     angle_ = 0;
+
+    dfu_initialized_ = false;
 
     return Result::OK;
 }
@@ -70,29 +65,34 @@ void Bootloader::SosLed()
 uint32_t Bootloader::FillTargetMemory()
 {
     uint32_t entry_address = *(uint32_t*) (qspi_buffer + 4);
+    auto mem = System::GetProgramMemory(entry_address);
 
-    if (entry_address >= sram_start && entry_address < sram_end)
+    switch (mem)
     {
-        for (size_t i = 0; i < SRAM_SPACE; i++)
+        case System::AXI_SRAM:
         {
-            sram_program[i] = qspi_buffer[i];
+            for (size_t i = 0; i < SRAM_SPACE; i++)
+            {
+                sram_program[i] = qspi_buffer[i];
+            }
+            hw_->qspi.Deinit();
+            return sram_start;
         }
-        hw_->qspi.Deinit();
-        return sram_start;
+        case System::QSPI:
+        {
+            // WARNING -- this will need to change with multi-programs 
+            // (should be the beginning of the program, not the memory)
+            return qspi_start;
+        }
+        default:
+        {
+            // If we got here, then the stack address is valid, but the 
+            // entry point is not, meaning the user should know their
+            // build isn't going to work
+            SosLed();
+        }
     }
-    else if (entry_address >= qspi_start && entry_address < qspi_end)
-    {
-        // WARNING -- this will need to change with multi-programs 
-        // (should be the beginning of the program, not the memory)
-        return qspi_start;
-    }
-    else
-    {
-        // If we got here, then the stack address is valid, but the 
-        // entry point is not, meaning the user should know their
-        // build isn't going to work
-        SosLed();
-    }
+
     return 0; // to ward off any compiler complaints
 }
 
@@ -108,10 +108,9 @@ void _Noreturn Bootloader::LoadProgram()
     // download failed or was invalid, or a program
     // has never been written to flash
     uint32_t* stack_ptr = (uint32_t*) qspi_buffer;
-    if (*stack_ptr != expected_stack)
+    if (*stack_ptr != System::expected_stack)
     {
-        // TODO -- make accesible!
-        if (dfu.dfu_complete)
+        if (dfu.GetDfuComplete())
         {
             // this means the DFU transaction occurred, but we downloaded
             // bad data. This requires a restart to reset the DFU state machine
@@ -142,7 +141,15 @@ void _Noreturn Bootloader::LoadProgram()
 
 void Bootloader::AwaitDFU()
 {
-    dfu.PollJump();
+    if (!dfu_initialized_)
+    {
+        dfu_initialized_ = true;
+        dfu.Init(hw_);
+    }
+    if (dfu.PollJump())
+    {
+        LoadProgram();
+    }
     SineLed();
 }
 

@@ -31,15 +31,13 @@ class DFUHandle::Impl {
         Result MemoryWrite(uint8_t *src, uint8_t *dest, uint32_t Len);
         Result MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len);
         Result MemoryStatus(uint32_t Add, uint8_t Cmd, uint8_t *buffer);
+        Result Deinit();
 
-        void LoadProgram();
         bool dfu_complete;
         bool dfu_initiated;
 
     private:
 
-        Result Deinit();
-        uint32_t FillTargetMemory();
         void SosLed();
         static constexpr uint32_t addr_offset_ = 0x90000000U;
         static constexpr uint32_t sector_size_ = 0x10000U;
@@ -85,7 +83,7 @@ DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
     HAL_PWREx_EnableUSBVoltageDetector();
 
     hw_ = seed;
-    
+
     data_written_ = 0;
     dfu_complete = false;
     dfu_initiated = false;
@@ -200,78 +198,6 @@ void DFUHandle::Impl::SosLed()
             hw_->DelayMs(delays[i] * 100);
         }
     }
-}
-
-uint32_t DFUHandle::Impl::FillTargetMemory()
-{
-    uint32_t entry_address = *(uint32_t*) (qspi_buffer + 4);
-
-    if (entry_address >= sram_start_ && entry_address < sram_end_)
-    {
-        for (size_t i = 0; i < SRAM_SPACE; i++)
-        {
-            sram_program[i] = qspi_buffer[i];
-        }
-        hw_->qspi.Deinit();
-        return sram_start_;
-    }
-    else if (entry_address >= qspi_start_ && entry_address < qspi_end_)
-    {
-        // WARNING -- this will need to change with multi-programs 
-        // (should be the beginning of the program, not the memory)
-        return qspi_start_;
-    }
-    else
-    {
-        // If we got here, then the stack address is valid, but the 
-        // entry point is not, meaning the user should know their
-        // build isn't going to work
-        SosLed();
-    }
-    return 0; // to ward off any compiler complaints
-}
-
-void _Noreturn DFUHandle::Impl::LoadProgram()
-{
-    // The data caching can cause issues if we've recently
-    // read QSPI and found no program in there, and then
-    // actually write a program there and try to load it.
-    SCB_InvalidateDCache();
-    __DSB();
-    
-    // If the stack pointer isn't here, then either the
-    // download failed or was invalid, or a program
-    // has never been written to flash
-    uint32_t* stack_ptr = (uint32_t*) qspi_buffer;
-    if (*stack_ptr != expected_stack_)
-    {
-        if (dfu_complete)
-        {
-            // this means the DFU transaction occurred, but we downloaded
-            // bad data. This requires a restart to reset the DFU state machine
-            SosLed();
-        }
-        return;
-    }
-
-    uint32_t program_start = FillTargetMemory();
-    
-    hw_->SetLed(false);
-    Deinit();
-
-    // disable interupts NOTE -- These two seem to cause
-    // errors for the target application
-    // __set_PRIMASK(1);
-    // __disable_irq();
-    RCC->CIER = 0x00000000;
-    
-    typedef volatile void (*EntryPoint)(void);
-
-    volatile uint32_t application_address = *(__IO uint32_t*)(program_start + 4);
-    EntryPoint application = (EntryPoint)(application_address);
-    SCB->VTOR = program_start;
-    __set_MSP(*(__IO uint32_t*)program_start);
-    application();
 }
 
 extern "C" 
@@ -392,7 +318,12 @@ DFUHandle::Result DFUHandle::Init(DaisySeed* seed)
     return pimpl_->Init(seed);
 }
 
-void DFUHandle::PollJump()
+DFUHandle::Result DFUHandle::Deinit()
+{
+    return pimpl_->Deinit();
+}
+
+bool DFUHandle::PollJump()
 {
     // Prevents a jump during DFU download
     if (pimpl_->dfu_initiated)
@@ -404,30 +335,22 @@ void DFUHandle::PollJump()
         state_ = State::WAITING_ON_DFU;
         HappyBlink();
     }
-        
 
     bool timeout_elapsed = System::GetNow() - timeout_start_ > timeout_;
     if (pimpl_->dfu_complete || (timeout_elapsed && state_ == State::WAITING_ON_TIMEOUT))
     {
-        pimpl_->LoadProgram();
-        // If we get here, then the program failed to load, meaning
+        // If this method is called again, then the program failed to load, meaning
         // there's likely no program in flash
         state_ = State::WAITING_ON_DFU;
+        return true;
     }
-        
-    SineLed();
+
+    return false;
 }
 
-void DFUHandle::SineLed()
-{
-    uint32_t time = System::GetNow();
-    if (time > pwm_tick_)
-    {
-        pwm_tick_ = time;
-        angle_ += (2 * M_PI / 1000.f) / sine_hz_;
-        bool led = sin(angle_) * sine_fid_ + sine_fid_ - 1 > time % (sine_fid_ * 2);
-        hw_->SetLed(led);   
-    }
+bool DFUHandle::GetDfuComplete() 
+{ 
+    return pimpl_->dfu_complete; 
 }
 
 void DFUHandle::HappyBlink()

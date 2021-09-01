@@ -26,8 +26,6 @@ int main(void)
 	// TODO -- usb drive
 
 	// Otherwise, wait for a DFU interaction
-	boot.dfu.Init(&hw);
-
 	while(1) {
 		boot.AwaitDFU();
 	}

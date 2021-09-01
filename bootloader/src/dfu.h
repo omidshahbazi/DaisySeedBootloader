@@ -60,13 +60,21 @@ class DFUHandle
      *  loads the target application and jumps to it.
      *  If no program is present, a DFU event is awaited.
      *  Attempts a jump immediately upon DFU completion.
+     * 
+     *  \returns True if the bootloader should jump
      */
-    void   PollJump();
+    bool   PollJump();
+
+    /** Deinitializes DFU-related peripherals
+     * 
+     */
+    Result Deinit();
 
     /** Retrieves the current state.
      * 
      */
     State  GetState() { return state_; }
+    bool GetDfuComplete();
 
     DFUHandle() : pimpl_(nullptr) {}
     DFUHandle(const DFUHandle& other) = default;
@@ -76,7 +84,6 @@ class DFUHandle
 
   private:
 
-    void SineLed();
     void HappyBlink();
 
     DaisySeed* hw_;

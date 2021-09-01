@@ -100,7 +100,8 @@ class Bootloader
 
     DFUHandle dfu;
 
-    Switch boot_button_;
+    // Switch boot_button_; // handled by the dfu class at the moment
+    bool dfu_initialized_;
 
     static constexpr uint32_t timeout_ = 5000; // 5 seconds
     uint32_t timeout_start_;
