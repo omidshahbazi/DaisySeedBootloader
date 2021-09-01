@@ -39,7 +39,6 @@ class DFUHandle::Impl {
     private:
 
         Result Deinit();
-        void VerifyQspiMode(QSPIHandle::Config::Mode mode);
         uint32_t FillTargetMemory();
         void SosLed();
         static constexpr uint32_t addr_offset_ = 0x90000000U;
@@ -86,8 +85,7 @@ DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
     HAL_PWREx_EnableUSBVoltageDetector();
 
     hw_ = seed;
-
-    VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
+    
     data_written_ = 0;
     dfu_complete = false;
     dfu_initiated = false;
@@ -113,25 +111,13 @@ DFUHandle::Result DFUHandle::Impl::Deinit()
     return Result::OK;
 }
 
-void DFUHandle::Impl::VerifyQspiMode(QSPIHandle::Config::Mode mode)
-{
-    if (hw_->qspi.GetConfig().mode != mode)
-    {
-        auto config = hw_->qspi.GetConfig();
-        config.mode = mode;
-        hw_->qspi.Init(config);
-    }
-}
-
 DFUHandle::Result DFUHandle::Impl::MemoryInit()
 {
-    VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
     return Result::OK;
 }
 
 DFUHandle::Result DFUHandle::Impl::MemoryDeinit()
 {
-    VerifyQspiMode(QSPIHandle::Config::Mode::DSY_MEMORY_MAPPED);
     return Result::OK;
 }
 
@@ -140,7 +126,6 @@ DFUHandle::Result DFUHandle::Impl::MemoryErase(uint32_t Add)
     // DFU download has begun, so we shouldn't allow a jump
     // to happen before it completes
     dfu_initiated = true;
-    VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
     Add -= addr_offset_;
     hw_->qspi.Erase(Add, Add + sector_size_);
     return Result::OK;
@@ -148,7 +133,6 @@ DFUHandle::Result DFUHandle::Impl::MemoryErase(uint32_t Add)
 
 DFUHandle::Result DFUHandle::Impl::MemoryWrite(uint8_t *src, uint8_t *dest, uint32_t Len)
 {
-    VerifyQspiMode(QSPIHandle::Config::Mode::INDIRECT_POLLING);
     uint32_t write_addr = (uint32_t) dest - addr_offset_;
     hw_->qspi.Write(write_addr, Len, src);
     data_written_ += Len;
@@ -157,7 +141,6 @@ DFUHandle::Result DFUHandle::Impl::MemoryWrite(uint8_t *src, uint8_t *dest, uint
 
 DFUHandle::Result DFUHandle::Impl::MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len)
 {
-    VerifyQspiMode(QSPIHandle::Config::Mode::DSY_MEMORY_MAPPED);
     for (size_t i = 0; i < Len; i++)
         dest[i] = qspi_buffer[*src + i];
     return Result::OK;
@@ -255,8 +238,6 @@ void _Noreturn DFUHandle::Impl::LoadProgram()
     // actually write a program there and try to load it.
     SCB_InvalidateDCache();
     __DSB();
-
-    VerifyQspiMode(QSPIHandle::Config::Mode::DSY_MEMORY_MAPPED);
     
     // If the stack pointer isn't here, then either the
     // download failed or was invalid, or a program
