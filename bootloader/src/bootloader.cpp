@@ -15,10 +15,10 @@ uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
 uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE];
 uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
-Bootloader::Result Bootloader::Init(DaisySeed* seed)
+Bootloader::Result Bootloader::Init(DaisySeed& seed)
 {
     // dfu.Init(seed);
-    hw_ = seed;
+    hw_ = &seed;
 
     pwm_tick_ = System::GetNow();
     angle_ = 0;
@@ -76,13 +76,13 @@ uint32_t Bootloader::FillTargetMemory()
                 sram_program[i] = qspi_buffer[i];
             }
             hw_->qspi.Deinit();
-            return sram_start;
+            return System::sram_start;
         }
         case System::QSPI:
         {
             // WARNING -- this will need to change with multi-programs 
             // (should be the beginning of the program, not the memory)
-            return qspi_start;
+            return System::qspi_start;
         }
         default:
         {

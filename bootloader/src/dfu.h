@@ -10,14 +10,6 @@ namespace daisy
 @{
 */
 
-#define SRAM_SPACE    0x80000U
-#define ITCMRAM_SPACE 0x10000U
-#define PROGRAM_SPACE SRAM_SPACE + ITCMRAM_SPACE
-#define EXEC_START    0x24000000U
-
-#define DSY_SRAM_EXEC    __attribute__((section( ".sram_exec")))
-#define DSY_ITCMRAM_EXEC __attribute__((section( ".itcmram_exec")))
-
 /** 
    @author Gabriel Ball
    @date 14 July, 2021

@@ -51,11 +51,14 @@ class Bootloader
       WAITING_ON_DFU
     };
 
+    Bootloader() {}
+    ~Bootloader() {}
+
     /** Initializes the USB drivers and starts timeout.
      * 
      *  \param seed Pointer to initialized seed hardware class
      */
-    Result Init(DaisySeed* seed);
+    Result Init(DaisySeed& seed);
 
     /** Waits for the appropriate condition, then
      *  loads the target application and jumps to it.
@@ -73,18 +76,6 @@ class Bootloader
     Bootloader& operator=(const Bootloader& other) = default;
 
     void LoadProgram();
-
-    // TODO -- use System vars when qspi_cpp is merged!
-    static constexpr uint32_t addr_offset = 0x90000000U;
-    static constexpr uint32_t sector_size = 0x10000U;
-    static constexpr uint32_t expected_stack = 0x20020000U;
-
-    static constexpr uint32_t sram_start = 0x24000000U;
-    static constexpr uint32_t sram_end = sram_start + 0x80000;
-    static constexpr uint32_t qspi_start = 0x90040000U;
-
-    // TODO -- this is a bit too large:
-    static constexpr uint32_t qspi_end = qspi_start + 0x800000;
 
   private:
 

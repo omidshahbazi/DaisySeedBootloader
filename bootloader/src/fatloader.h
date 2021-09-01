@@ -24,6 +24,9 @@ Result LoadFAT(FILINFO* info)
 	}
 	// right now, we're just expecting the raw binary
 	
+
+
+  return Result::PRESENT;
 }
 
 Result CheckFAT()
@@ -46,7 +49,7 @@ Result CheckFAT()
 
 		if(f_opendir(&dir, SDPath) != FR_OK)
     {
-        return;
+        return Result::ERR;
     }
     do
     {
@@ -70,7 +73,7 @@ Result CheckFAT()
 		// Not sure if this needs to be closed before reading files
     f_closedir(&dir);
 
-
+    return Result::PRESENT;
 	}
 
 	return Result::ABSENT;

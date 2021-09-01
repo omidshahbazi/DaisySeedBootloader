@@ -41,15 +41,6 @@ class DFUHandle::Impl {
         void SosLed();
         static constexpr uint32_t addr_offset_ = 0x90000000U;
         static constexpr uint32_t sector_size_ = 0x10000U;
-        static constexpr uint32_t expected_stack_ = 0x20020000U;
-
-        // TODO -- this should be made as portable as possible, so ideally
-        // these would be defined in a more platform-independent way
-        static constexpr uint32_t sram_start_ = 0x24000000U;
-        static constexpr uint32_t sram_end_ = sram_start_ + 0x80000;
-        static constexpr uint32_t qspi_start_ = 0x90040000U;
-        // TODO -- this is a bit too large:
-        static constexpr uint32_t qspi_end_ = qspi_start_ + 0x800000;
 
         size_t data_written_;
         DaisySeed* hw_;
@@ -58,9 +49,6 @@ class DFUHandle::Impl {
 
 // Global dfu handle
 DFUHandle::Impl dfu_impl;
-uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
-uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE];
-uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
 DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
 {
@@ -139,8 +127,10 @@ DFUHandle::Result DFUHandle::Impl::MemoryWrite(uint8_t *src, uint8_t *dest, uint
 
 DFUHandle::Result DFUHandle::Impl::MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len)
 {
+    // TODO -- this will need to change for multi-programs
     for (size_t i = 0; i < Len; i++)
-        dest[i] = qspi_buffer[*src + i];
+        dest[i] = *((__IO uint8_t*) System::qspi_start + *src + i);
+        // dest[i] = qspi_buffer[*src + i];
     return Result::OK;
 }
 
@@ -172,7 +162,7 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
     }
     return Result::OK;
 }
-// TODO -- having issues with bootloader reliability on startup
+
 void DFUHandle::Impl::SosLed()
 {
     // If we get here, the program should block until given a manual reset

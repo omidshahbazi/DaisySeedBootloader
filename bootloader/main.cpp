@@ -14,12 +14,14 @@ int main(void)
 	hw.Configure();
 	hw.Init(true);
 
-	Result res = CheckFAT();
+	boot.Init(hw);
 
-	if (res == Result::PRESENT)
-	{
-		// indicate error
-	}
+	// Result res = CheckFAT();
+
+	// if (res == Result::PRESENT)
+	// {
+	// 	// indicate error
+	// }
 
 	// No SD card, so check for USB drive
 

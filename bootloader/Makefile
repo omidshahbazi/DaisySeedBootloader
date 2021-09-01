@@ -4,9 +4,10 @@ TARGET = bootloader
 # Sources
 CPP_SOURCES = main.cpp \
 src/bootloader.cpp \
-src/dfu.cpp
+src/dfu.cpp \
+src/fatloader.cpp
 
-CPP_INCLUDES = src
+C_INCLUDES = -Isrc
 
 C_SOURCES += \
 ../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Src/usbd_dfu.c \
