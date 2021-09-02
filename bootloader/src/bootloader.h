@@ -16,6 +16,9 @@ namespace daisy
 #define PROGRAM_SPACE SRAM_SPACE + ITCMRAM_SPACE
 #define EXEC_START    0x24000000U
 
+// TODO --  also make this part of qspi
+#define QSPI_INITIAL 0x90000000U
+
 #define DSY_SRAM_EXEC    __attribute__((section( ".sram_exec")))
 #define DSY_ITCMRAM_EXEC __attribute__((section( ".itcmram_exec")))
 
@@ -77,15 +80,14 @@ class Bootloader
 
     void LoadProgram();
 
-  private:
-
-
     void SineLed();
     void HappyBlink();
+    void SosLed();
+
+  private:
 
     Result Deinit();
     uint32_t FillTargetMemory();
-    void SosLed();
 
     DaisySeed* hw_;
 

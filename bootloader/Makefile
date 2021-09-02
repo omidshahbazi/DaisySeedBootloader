@@ -7,6 +7,8 @@ src/bootloader.cpp \
 src/dfu.cpp \
 src/fatloader.cpp
 
+USE_FATFS = 1
+
 C_INCLUDES = -Isrc
 
 C_SOURCES += \

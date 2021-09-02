@@ -1,9 +1,9 @@
 #include <string.h>
 #include "daisy_seed.h"
 
-using namespace daisy;
+// TODO -- this will need to be extended for USB drives
 
-SdmmcHandler sd;
+using namespace daisy;
 
 enum Result {
 	ABSENT,
@@ -11,11 +11,8 @@ enum Result {
 	ERR,
 };
 
-#define MAX_FILENAME_LEN 256
-#define TRY(func) if (func != FR_OK) return Result::PRESENT
+bool EnsureValidBinary(FIL* file, size_t file_size);
 
-char binfile[MAX_FILENAME_LEN];
+Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address);
 
-Result LoadFAT(FILINFO* info);
-
-Result CheckFAT();
+Result TryLoadingFAT(DaisySeed& hw, uint32_t base_address);
