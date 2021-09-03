@@ -75,7 +75,7 @@ uint32_t Bootloader::FillTargetMemory()
             {
                 sram_program[i] = qspi_buffer[i];
             }
-            hw_->qspi.Deinit();
+            // hw_->qspi.Deinit();
             return System::sram_start;
         }
         case System::QSPI:

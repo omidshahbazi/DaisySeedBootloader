@@ -23,7 +23,7 @@ C_INCLUDES += \
 
 LDSCRIPT = boot_linker.lds
 
-# WARNING -- an opt of -O3 causes the jump to fail
+# WARNING -- an opt of -O3 causes the jump to fail and makes USB connectivity unreliable
 OPT = -O0
 
 # CFLAGS += -DUSBD_SUPPORT_USER_STRING_DESC=1

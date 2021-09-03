@@ -7,10 +7,17 @@ using namespace daisy;
 DaisySeed hw;
 Bootloader boot;
 
+// NOTE -- seemingly random things will cause the startup to be unreliable.
+// Not sure why this is so touchy.
+
 int main(void)
 {
 	hw.Configure();
 	hw.Init(true);
+
+	// This is ABSOLUTELY necessary to prevent random USB connectivity failure on startup
+	// and I have no idea why
+	hw.DelayMs(10);
 
 	boot.Init(hw);
 
