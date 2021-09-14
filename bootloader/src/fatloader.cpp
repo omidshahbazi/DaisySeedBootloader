@@ -13,24 +13,28 @@ static uint8_t file_data[FILE_BUFF_LEN];
 
 SdmmcHandler sd;
 
-bool EnsureValidBinary(FIL* file, size_t file_size)
+bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem)
 {
   // right now, we're just expecting the raw binary
 	uint32_t stack_ptr;
   uint32_t entry_point;
   UINT read;
-  f_read(&SDFile, &stack_ptr, sizeof(stack_ptr), &read);
-  f_read(&SDFile, &entry_point, sizeof(entry_point), &read);
+  f_read(&SDFile, &stack_ptr, sizeof(uint32_t), &read);
+  f_read(&SDFile, &entry_point, sizeof(uint32_t), &read);
 
   if (stack_ptr != System::expected_stack)
   {
     return false; // no need to rewind if the file isn't valid
   }
 
-  // Verifying that the sizes match up
-  auto mem = System::GetProgramMemory(entry_point);
+  // verifying that a valid memory space is used
+  *mem = System::GetProgramMemory(entry_point);
   bool valid = true;
-  switch (mem)
+  if (*mem == System::ProgramMemory::INVALID_ADDRESS || *mem == System::ProgramMemory::INTERNAL_FLASH)
+    valid = false;
+
+  // Verifying that the sizes match up
+  switch (*mem)
   {
     case System::AXI_SRAM:
       if (file_size > System::sram_end - System::sram_start)
@@ -58,7 +62,9 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
 		return Result::ERR;
 	}
 
-  if (EnsureValidBinary(&SDFile, file_size))
+  System::ProgramMemory mem;
+
+  if (EnsureValidBinary(file_size, &mem))
   {
     // Write file data to QSPI
     UINT data_read;
@@ -71,6 +77,21 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
         hw.qspi.Erase(base_address + data_written, base_address + data_written + PAGE_SIZE);
       }
       f_read(&SDFile, file_data, FILE_BUFF_LEN, &data_read);
+
+      // // Ensuring the memory isn't overrun
+      // switch (mem) 
+      // {
+      //   case System::AXI_SRAM:
+      //     if (data_written + data_read >= System::sram_end - System::sram_start)
+      //       return Result::ERR;
+      //     break;
+      //   case System::QSPI:
+      //     if (data_written + data_read >= System::qspi_end - System::qspi_start)
+      //       return Result::ERR;
+      //     break;
+      //   default:
+      //     return Result::ERR;
+      // }
       
       hw.qspi.Write(base_address + data_written, data_read, file_data);
       data_written += data_read;
@@ -105,7 +126,6 @@ Result TryLoadingFAT(DaisySeed& hw, uint32_t base_address)
 		DIR dir;
 		FILINFO info;
 		FRESULT result = FR_OK;
-		char *  name;
 
 		if(f_opendir(&dir, SDPath) != FR_OK)
     {
@@ -121,18 +141,14 @@ Result TryLoadingFAT(DaisySeed& hw, uint32_t base_address)
       if(info.fattrib & (AM_HID | AM_DIR))
         continue;
 
-      name = info.fname;
-
-      if(strstr(name, ".bin") || strstr(name, ".BIN"))
+      if(strstr(info.fname, ".bin") || strstr(info.fname, ".BIN"))
       {
         return LoadFAT(hw, &info, base_address);
       }
     } while(result == FR_OK);
 
-		// Not sure if this needs to be closed before reading files
+		// Not sure if this needs to be closed
     f_closedir(&dir);
-
-    return Result::PRESENT;
 	}
 
 	return Result::ABSENT;
