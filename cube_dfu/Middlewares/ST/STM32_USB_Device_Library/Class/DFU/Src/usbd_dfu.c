@@ -56,9 +56,15 @@ EndBSPDependencies */
 #include "usbd_dfu.h"
 #include "usbd_ctlreq.h"
 
+#define USBD_EMEM 2
+
 #ifndef USBD_SUPPORT_USER_STRING_DESC
 #define USBD_SUPPORT_USER_STRING_DESC 1U
 #endif
+
+#ifndef USBD_MAX_POWER
+#define USBD_MAX_POWER                                  0x32U /* 100 mA */
+#endif /* USBD_MAX_POWER */
 
 /** @addtogroup STM32_USB_DEVICE_LIBRARY
   * @{

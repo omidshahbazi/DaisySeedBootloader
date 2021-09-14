@@ -17,8 +17,10 @@ MEMORY
 	FLASH (RX)         : ORIGIN = 0x08000000, LENGTH = 128K
 	DTCMRAM (RWX)      : ORIGIN = 0x20000000, LENGTH = 128K
 	/* SRAM (RWX)      : ORIGIN = 0x24000000, LENGTH = 256K */
-	SRAM_EXEC (RWX)    : ORIGIN = 0x24000000, LENGTH = 512K
-	RAM_D2 (RWX)       : ORIGIN = 0x30000000, LENGTH = 288K
+	SRAM_EXEC (RWX)    : ORIGIN = 0x24000000, LENGTH = 496K
+	SRAM_SPARE (RWX)   : ORIGIN = 0x24000000 + 496K, LENGTH = 16K
+	RAM_D2_DMA (RWX)   : ORIGIN = 0x30000000, LENGTH = 32K
+	RAM_D2 (RWX)       : ORIGIN = 0x30008000, LENGTH = 256K
 	RAM_D3 (RWX)       : ORIGIN = 0x38000000, LENGTH = 64K
 	ITCMRAM_EXEC (RWX) : ORIGIN = 0x00000000, LENGTH = 64K
 	SDRAM (RWX)        : ORIGIN = 0xc0000000, LENGTH = 64M
@@ -99,6 +101,21 @@ SECTIONS
 		PROVIDE(__fini_array_end = .);
 	} > FLASH
 
+	.sram_exec (NOLOAD) :
+	{
+		. = ALIGN(4);
+		_ssram_exec = .;
+
+		PROVIDE(__sram_exec_start__ = _ssram_exec);
+		*(.sram_exec)
+		*(.sram_exec*)
+		*(COMMON)
+		. = ALIGN(4);
+		_esram_exec = .;
+
+		PROVIDE(__sram_exec_end__ = _esram_exec);
+	} > SRAM_EXEC
+
 	.data :
 	{
 		. = ALIGN(4);
@@ -111,7 +128,7 @@ SECTIONS
 		_edata = .;
 
 		PROVIDE(__data_end__ = _edata);
-	} > DTCMRAM AT >FLASH
+	} > SRAM_SPARE AT >FLASH
 
 	_sidata = LOADADDR(.data);
 
@@ -128,24 +145,9 @@ SECTIONS
 		_ebss = .;
 
 		PROVIDE(__bss_end__ = _ebss);
-	} > DTCMRAM
+	} > SRAM_SPARE
 
 	PROVIDE(end = .); 
-
-  .sram_exec (NOLOAD) :
-	{
-		. = ALIGN(4);
-		_ssram_exec = .;
-
-		PROVIDE(__sram_exec_start__ = _ssram_exec);
-		*(.sram_exec)
-		*(.sram_exec*)
-		*(COMMON)
-		. = ALIGN(4);
-		_esram_exec = .;
-
-		PROVIDE(__sram_exec_end__ = _esram_exec);
-	} > SRAM_EXEC
 
   .itcmram_exec (NOLOAD) :
 	{
@@ -188,7 +190,7 @@ SECTIONS
 		_esram1_bss = .;
 
 		PROVIDE(__sram1_bss_end__ = _esram1_bss);
-	} > RAM_D2
+	} > RAM_D2_DMA
 
 	/*
 	.sdram_text :

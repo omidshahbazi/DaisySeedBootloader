@@ -11,6 +11,8 @@
 
 using namespace daisy;
 
+#define DSY_DTCMRAM_BSS __attribute__((section(".dtcmram_bss")))
+
 extern "C"
 {
     USBD_HandleTypeDef hUsbDeviceFS;
@@ -52,6 +54,10 @@ DFUHandle::Impl dfu_impl;
 
 DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
 {
+    uint8_t* clear_ptr = (uint8_t*) &hUsbDeviceFS;
+    for (size_t i = 0; i < sizeof(USBD_HandleTypeDef); i++)
+        *clear_ptr++ = 0;
+    
     if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
     {
         return Result::ERR;
@@ -60,6 +66,7 @@ DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
     {
         return Result::ERR;
     }
+    // hUsbDeviceFS.pClass = &USBD_DFU;
     if (USBD_DFU_RegisterMedia(&hUsbDeviceFS, &USBD_DFU_fops_FS) != USBD_OK)
     {
         return Result::ERR;
@@ -81,6 +88,8 @@ DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
 
 DFUHandle::Result DFUHandle::Impl::Deinit()
 {
+    __DSB();
+
     if (USBD_DeInit(&hUsbDeviceFS) != USBD_OK)
         return Result::ERR;
     HAL_PWREx_DisableUSBVoltageDetector();
@@ -90,7 +99,7 @@ DFUHandle::Result DFUHandle::Impl::Deinit()
     // TODO -- create mechanism to ensure the
     // deinit happens after USB disconnect so
     // the disconnect can happen without hanging
-    System::Delay(50);
+    System::Delay(100);
 
     hw_->Deinit();
 

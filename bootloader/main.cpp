@@ -15,9 +15,7 @@ int main(void)
 	hw.Configure();
 	hw.Init(true);
 
-	// This is ABSOLUTELY necessary to prevent random USB connectivity failure on startup
-	// and I have no idea why
-	hw.DelayMs(10);
+	SCB_DisableDCache();
 
 	boot.Init(hw);
 
@@ -30,7 +28,7 @@ int main(void)
 		boot.SosLed();
 	}
 	else if (res == Result::PRESENT)
-	{
+	{ 
 		boot.LoadProgram();
 	}
 
@@ -39,6 +37,7 @@ int main(void)
 	// TODO -- usb drive
 
 	// Otherwise, wait for a DFU interaction
+
 	while(1) {
 		boot.AwaitDFU();
 	}

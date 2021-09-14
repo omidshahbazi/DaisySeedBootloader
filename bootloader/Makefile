@@ -1,5 +1,5 @@
 # Project Name
-TARGET = bootloader
+TARGET = main
 
 # Sources
 CPP_SOURCES = main.cpp \
@@ -18,8 +18,9 @@ C_SOURCES += \
 C_INCLUDES += \
 -I. \
 -I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc \
--I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/Inc \
 -I../cube_dfu/USB_DEVICE/App
+
+# -I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/Inc \
 
 LDSCRIPT = boot_linker.lds
 

@@ -12,7 +12,8 @@
 using namespace daisy;
 
 uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
-uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE];
+// uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE / 2];
+uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE - 16384];
 uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
 Bootloader::Result Bootloader::Init(DaisySeed& seed)
@@ -24,6 +25,12 @@ Bootloader::Result Bootloader::Init(DaisySeed& seed)
     angle_ = 0;
 
     dfu_initialized_ = false;
+
+    dfu_initialized_ = true;
+    dfu.Init(hw_);
+
+    // 200 ms seems to make this work (kinda scuffed!!)
+    hw_->DelayMs(200);
 
     return Result::OK;
 }
@@ -62,6 +69,8 @@ void Bootloader::SosLed()
     }
 }
 
+// NOTE -- this is very destructive to any code that might attempt to run after
+// The locals here will all be in dtcmram (on the stack), so this should be fine
 uint32_t Bootloader::FillTargetMemory()
 {
     uint32_t entry_address = *(uint32_t*) (qspi_buffer + 4);
@@ -71,12 +80,13 @@ uint32_t Bootloader::FillTargetMemory()
     {
         case System::AXI_SRAM:
         {
-            for (size_t i = 0; i < SRAM_SPACE; i++)
+            // sram_program = (uint8_t*) System::sram_start;
+            for (size_t i = 0; i < sizeof(sram_program); i++)
             {
                 sram_program[i] = qspi_buffer[i];
             }
-            // hw_->qspi.Deinit();
-            return System::sram_start;
+            hw_->qspi.Deinit();
+            return (uint32_t) sram_program;
         }
         case System::QSPI:
         {
@@ -101,8 +111,8 @@ void _Noreturn Bootloader::LoadProgram()
     // The data caching can cause issues if we've recently
     // read QSPI and found no program in there, and then
     // actually write a program there and try to load it.
-    SCB_InvalidateDCache();
-    __DSB();
+    // SCB_InvalidateDCache();
+    // __DSB();
     
     // If the stack pointer isn't here, then either the
     // download failed or was invalid, or a program
@@ -119,18 +129,18 @@ void _Noreturn Bootloader::LoadProgram()
         return;
     }
 
-    uint32_t program_start = FillTargetMemory();
-    
     hw_->SetLed(false);
     Deinit();
 
+    uint32_t program_start = FillTargetMemory();
+    
     // disable interupts NOTE -- These two seem to cause
     // errors for the target application
     // __set_PRIMASK(1);
     // __disable_irq();
     RCC->CIER = 0x00000000;
     
-    typedef volatile void (*EntryPoint)(void);
+    typedef void _Noreturn (*EntryPoint)(void);
 
     volatile uint32_t application_address = *(__IO uint32_t*)(program_start + 4);
     EntryPoint application = (EntryPoint)(application_address);
@@ -143,8 +153,8 @@ void Bootloader::AwaitDFU()
 {
     if (!dfu_initialized_)
     {
-        dfu_initialized_ = true;
-        dfu.Init(hw_);
+        // dfu_initialized_ = true;
+        // dfu.Init(hw_);
     }
     if (dfu.PollJump())
     {
