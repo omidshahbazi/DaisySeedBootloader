@@ -5,7 +5,8 @@ TARGET = main
 CPP_SOURCES = main.cpp \
 src/bootloader.cpp \
 src/dfu.cpp \
-src/fatloader.cpp
+src/fatloader.cpp \
+src/msd.cpp
 
 USE_FATFS = 1
 
