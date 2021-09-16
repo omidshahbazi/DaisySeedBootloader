@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    usbh_diskio.h (based on usbh_diskio_template.h v2.0.2)
+  * @file    usbh_diskio.h (based on usbh_diskio_dma_template.h v2.0.2)
   * @brief   Header for usbh_diskio.c module
   ******************************************************************************
   * @attention
