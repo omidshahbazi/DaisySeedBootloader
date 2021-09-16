@@ -32,7 +32,7 @@ class MSDHandle
      * 
      *  \param seed Pointer to initialized seed hardware class
      */
-    Result Init(DaisySeed* seed);
+    Result Init(DaisySeed& seed);
 
     /** Deinitializes MSD-related peripherals
      * 

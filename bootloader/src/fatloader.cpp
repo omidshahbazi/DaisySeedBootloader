@@ -1,4 +1,5 @@
 #include "fatloader.h"
+#include "msd.h"
 
 #define MAX_FILENAME_LEN 256
 #define TRY(func) if (func != FR_OK) return Result::PRESENT
@@ -11,7 +12,8 @@ static uint8_t file_data[FILE_BUFF_LEN];
 // TODO -- make this a static constexpr of qspi
 #define PAGE_SIZE 65536
 
-SdmmcHandler sd;
+// SdmmcHandler sd;
+MSDHandle msd;
 
 bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem)
 {
@@ -112,13 +114,15 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
 
 Result TryLoadingFAT(DaisySeed& hw, uint32_t base_address)
 {
-	// Init SD Card
-	SdmmcHandler::Config sd_cfg;
-	sd_cfg.Defaults();
-	sd.Init(sd_cfg);
+	// // Init SD Card
+	// SdmmcHandler::Config sd_cfg;
+	// sd_cfg.Defaults();
+	// sd.Init(sd_cfg);
 
-	// Links libdaisy i/o to fatfs driver.
-	dsy_fatfs_init();
+	// // Links libdaisy i/o to fatfs driver.
+	// dsy_fatfs_init();
+
+  msd.Init(hw);
 
 	// Mount SD Card
 	if (f_mount(&SDFatFS, SDPath, 1) == FR_OK)
