@@ -7,8 +7,24 @@ using namespace daisy;
 DaisySeed hw;
 Bootloader boot;
 
-// NOTE -- seemingly random things will cause the startup to be unreliable.
-// Not sure why this is so touchy.
+void ManageMsd()
+{
+	if (MsdReady())
+	{
+		Result res = TryLoadingFAT(hw, System::qspi_start - QSPI_INITIAL);
+
+		if (res == Result::ERR)
+		{
+			// Either there was a .bin file with an invalid executable or
+			// an sdcard was present that failed to mount / open
+			boot.SosLed();
+		}
+		else if (res == Result::PRESENT)
+		{ 
+			boot.LoadProgram();
+		}
+	}
+}
 
 int main(void)
 {
@@ -19,18 +35,20 @@ int main(void)
 
 	boot.Init(hw);
 
-	Result res = TryLoadingFAT(hw, System::qspi_start - QSPI_INITIAL);
+	MsdPrepare(hw);
 
-	if (res == Result::ERR)
-	{
-		// Either there was a .bin file with an invalid executable or
-		// an sdcard was present that failed to mount / open
-		boot.SosLed();
-	}
-	else if (res == Result::PRESENT)
-	{ 
-		boot.LoadProgram();
-	}
+	// Result res = TryLoadingFAT(hw, System::qspi_start - QSPI_INITIAL);
+
+	// if (res == Result::ERR)
+	// {
+	// 	// Either there was a .bin file with an invalid executable or
+	// 	// an sdcard was present that failed to mount / open
+	// 	boot.SosLed();
+	// }
+	// else if (res == Result::PRESENT)
+	// { 
+	// 	boot.LoadProgram();
+	// }
 
 	// No SD card, so check for USB drive
 
@@ -39,6 +57,7 @@ int main(void)
 	// Otherwise, wait for a DFU interaction
 
 	while(1) {
+		ManageMsd();
 		boot.AwaitDFU();
 	}
 }
