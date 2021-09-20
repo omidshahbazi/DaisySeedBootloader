@@ -12,8 +12,31 @@ static uint8_t file_data[FILE_BUFF_LEN];
 // TODO -- make this a static constexpr of qspi
 #define PAGE_SIZE 65536
 
+#define USB_FATFS
+
+#ifndef USB_FATFS
+#define FatFS_Path SDPath
+#define FatFS_Obj SDFatFS
+#define FatFS_File SDFile
+#else
+#define FatFS_Path USBHPath
+#define FatFS_Obj USBHFatFS
+#define FatFS_File USBHFile
+#endif
+
 // SdmmcHandler sd;
 MSDHandle msd;
+
+void MsdPrepare(DaisySeed& hw)
+{
+  msd.Init(hw);
+}
+
+bool MsdReady()
+{
+  msd.Process();
+  return msd.GetReady();
+}
 
 bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem)
 {
@@ -21,8 +44,8 @@ bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem)
 	uint32_t stack_ptr;
   uint32_t entry_point;
   UINT read;
-  f_read(&SDFile, &stack_ptr, sizeof(uint32_t), &read);
-  f_read(&SDFile, &entry_point, sizeof(uint32_t), &read);
+  f_read(&FatFS_File, &stack_ptr, sizeof(uint32_t), &read);
+  f_read(&FatFS_File, &entry_point, sizeof(uint32_t), &read);
 
   if (stack_ptr != System::expected_stack)
   {
@@ -51,7 +74,7 @@ bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem)
       break;
   }
 
-  f_rewind(&SDFile);
+  f_rewind(&FatFS_File);
   return valid;
 }
 
@@ -59,7 +82,7 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
 {
   size_t file_size = info->fsize;
 
-	if (f_open(&SDFile, info->fname, FA_OPEN_EXISTING | FA_READ) != FR_OK)
+	if (f_open(&FatFS_File, info->fname, FA_OPEN_EXISTING | FA_READ) != FR_OK)
 	{
 		return Result::ERR;
 	}
@@ -78,7 +101,7 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
       {
         hw.qspi.Erase(base_address + data_written, base_address + data_written + PAGE_SIZE);
       }
-      f_read(&SDFile, file_data, FILE_BUFF_LEN, &data_read);
+      f_read(&FatFS_File, file_data, FILE_BUFF_LEN, &data_read);
 
       // // Ensuring the memory isn't overrun
       // switch (mem) 
@@ -122,16 +145,16 @@ Result TryLoadingFAT(DaisySeed& hw, uint32_t base_address)
 	// // Links libdaisy i/o to fatfs driver.
 	// dsy_fatfs_init();
 
-  msd.Init(hw);
+  // msd.Init(hw);
 
 	// Mount SD Card
-	if (f_mount(&SDFatFS, SDPath, 1) == FR_OK)
+	if (f_mount(&FatFS_Obj, FatFS_Path, 1) == FR_OK)
 	{
 		DIR dir;
 		FILINFO info;
 		FRESULT result = FR_OK;
 
-		if(f_opendir(&dir, SDPath) != FR_OK)
+		if(f_opendir(&dir, FatFS_Path) != FR_OK)
     {
       return Result::ERR;
     }
