@@ -9,8 +9,10 @@ src/fatloader.cpp \
 src/msd.cpp
 
 C_SOURCES += \
-../cube_dfu/FATFS/Target/usbh_diskio.c \
-../cube_dfu/USB_HOST/App/usb_host.c \
+src/fatfs/fatfs_usbh.c \
+src/fatfs/usbh_diskio.c
+
+C_SOURCES += \
 ../cube_dfu/USB_HOST/Target/usbh_conf.c \
 ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_bot.c \
 ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_scsi.c \
@@ -20,16 +22,16 @@ C_SOURCES += \
 ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ioreq.c \
 ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_pipes.c
 
-# USE_FATFS = 1
+USE_FATFS = 1
 
 # C_SOURCES += \
 # ../cube_dfu/FATFS/App/fatfs.c
 
-C_SOURCES += \
-../cube_dfu/Middlewares/Third_Party/FatFS/src/diskio.c \
-../cube_dfu/Middlewares/Third_Party/FatFS/src/ff_gen_drv.c \
-../cube_dfu/Middlewares/Third_Party/FatFS/src/ff.c  \
-../cube_dfu/FATFS/App/fatfs.c
+# C_SOURCES += \
+# ../cube_dfu/Middlewares/Third_Party/FatFS/src/diskio.c \
+# ../cube_dfu/Middlewares/Third_Party/FatFS/src/ff_gen_drv.c \
+# ../cube_dfu/Middlewares/Third_Party/FatFS/src/ff.c  \
+# ../cube_dfu/FATFS/App/fatfs.c
 
 C_INCLUDES = -Isrc
 
@@ -39,16 +41,12 @@ C_SOURCES += \
 
 C_INCLUDES += \
 -I. \
+-Isrc/fatfs \
 -I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc \
 -I../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc \
 -I../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Inc \
 -I../cube_dfu/USB_DEVICE/App \
--I../cube_dfu/Middlewares/Third_Party/FatFs/src \
--I../cube_dfu/FATFS/Target \
--I../cube_dfu/FATFS/App \
--I../cube_dfu/USB_HOST/App \
 -I../cube_dfu/USB_HOST/Target
-
 
 # -I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/Inc 
 
