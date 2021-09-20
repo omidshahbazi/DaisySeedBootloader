@@ -7,6 +7,16 @@
 namespace daisy
 {
 
+/** Status of USB Host application
+ * 
+ */
+typedef enum {
+  APPLICATION_IDLE = 0,
+  APPLICATION_START,
+  APPLICATION_READY,
+  APPLICATION_DISCONNECT
+}ApplicationTypeDef;
+
 /** 
    @author Gabriel Ball
    @date September 16, 2021
@@ -32,12 +42,12 @@ class MSDHandle
      * 
      *  \param seed Pointer to initialized seed hardware class
      */
-    Result Init(DaisySeed& seed);
+    Result Init();
 
     /** Deinitializes MSD-related peripherals
      * 
      */
-    Result Deinit();
+    Result Deinit(DaisySeed& hw);
 
     /** Manages usb host functionality
      * 
