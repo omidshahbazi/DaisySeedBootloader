@@ -39,6 +39,17 @@ class MSDHandle
      */
     Result Deinit();
 
+    /** Manages usb host functionality
+     * 
+     */
+    void Process();
+
+    /** Returns true if a Mass Storage Device is connected
+     *  and ready for communicaton
+     * 
+     */
+    bool GetReady();
+
     MSDHandle() : pimpl_(nullptr) {}
     MSDHandle(const MSDHandle& other) = default;
     MSDHandle& operator=(const MSDHandle& other) = default;
