@@ -11,9 +11,6 @@ enum Result {
 	ERR,
 };
 
-void MsdPrepare(DaisySeed& hw);
-bool MsdReady();
-
 bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem);
 
 Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address);
