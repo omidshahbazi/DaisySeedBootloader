@@ -59,7 +59,10 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id);
  * -- Insert your external function declaration here --
  */
 /* USER CODE BEGIN 1 */
-
+uint8_t GetMscReady()
+{
+  return USBH_MSC_IsReady(&hUsbHostHS);
+}
 /* USER CODE END 1 */
 
 /**

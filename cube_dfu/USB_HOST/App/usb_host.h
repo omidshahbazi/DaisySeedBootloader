@@ -32,7 +32,7 @@
 #include "stm32h7xx_hal.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+uint8_t GetMscReady();
 /* USER CODE END INCLUDE */
 
 /** @addtogroup USBH_OTG_DRIVER
