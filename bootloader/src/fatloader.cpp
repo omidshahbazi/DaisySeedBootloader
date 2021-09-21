@@ -109,7 +109,7 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
     }
     while (data_read == FILE_BUFF_LEN);
 
-    if (usb_mode)
+    if (usb_mode && usb_initialized)
     {
       msd.Deinit(hw);
     }
