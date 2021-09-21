@@ -17,12 +17,15 @@
   */
 /* USER CODE BEGIN firstSection */
 /* can be used to modify / undefine following code or add new definitions */
-#define hUSB_Host hUsbHostHS
+
 /* USER CODE END firstSection */
 
 /* Includes ------------------------------------------------------------------*/
 #include "ff_gen_drv.h"
 #include "usbh_diskio.h"
+
+extern USBH_HandleTypeDef hUsbHostHS;
+#define hUSB_Host hUsbHostHS
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
