@@ -71,8 +71,6 @@ class MSDHandle
     DaisySeed* hw_;
     Impl* pimpl_;
 
-    Switch boot_button_;
-
 };
 
 } // namespace daisy

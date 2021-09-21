@@ -77,12 +77,13 @@ bool MSDHandle::Impl::GetReady()
 
 MSDHandle::Result MSDHandle::Init()
 {
-    return pimpl_->Init();
+  pimpl_ = &msd_impl;
+  return pimpl_->Init();
 }
 
 MSDHandle::Result MSDHandle::Deinit(DaisySeed& hw)
 {
-    return pimpl_->Deinit(hw);
+  return pimpl_->Deinit(hw);
 }
 
 bool MSDHandle::GetReady()
