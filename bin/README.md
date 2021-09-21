@@ -1,5 +1,11 @@
 # Changelog
 
+## v4.0.0
+* Added USB Mass Storage Device bootloading capabilities
+  * The FatFS code now supports USB drives
+  * Drives can be hot-plugged at any time
+  * SD cards take precedence if both an SD card and USB drive are present
+
 ## v3.0.0
 * Added FATFS-based bootloading capabilities
   * Currently supports only SDCARDS
