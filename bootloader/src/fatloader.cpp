@@ -137,6 +137,7 @@ Result TryLoadingFAT(DaisySeed& hw, uint32_t base_address)
   {
     if (!usb_initialized)
     {
+      dsy_fatfs_deinit();
       usb_initialized = true;
       FatFS_Path = USBHPath;
       FatFS_Obj = &USBHFatFS;
