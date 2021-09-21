@@ -13,7 +13,7 @@ using namespace daisy;
 
 uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
 // uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE / 2];
-uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE - 16384];
+uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE - 32768];
 uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
 Bootloader::Result Bootloader::Init(DaisySeed& seed)
