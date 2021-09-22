@@ -60,7 +60,7 @@ class DFUHandle
     /** Deinitializes DFU-related peripherals
      * 
      */
-    Result Deinit();
+    Result DeInit();
 
     /** Retrieves the current state.
      * 

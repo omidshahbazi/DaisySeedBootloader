@@ -35,10 +35,10 @@ Bootloader::Result Bootloader::Init(DaisySeed& seed)
     return Result::OK;
 }
 
-Bootloader::Result Bootloader::Deinit()
+Bootloader::Result Bootloader::DeInit()
 {
-    dfu.Deinit();
-    hw_->Deinit();
+    dfu.DeInit();
+    hw_->DeInit();
     return Result::OK;
 }
 
@@ -85,7 +85,7 @@ uint32_t Bootloader::FillTargetMemory()
             {
                 sram_program[i] = qspi_buffer[i];
             }
-            hw_->qspi.Deinit();
+            hw_->qspi.DeInit();
             return (uint32_t) sram_program;
         }
         case System::QSPI:
@@ -130,7 +130,7 @@ void _Noreturn Bootloader::LoadProgram()
     }
 
     hw_->SetLed(false);
-    Deinit();
+    DeInit();
 
     uint32_t program_start = FillTargetMemory();
     

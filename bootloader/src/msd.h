@@ -47,7 +47,7 @@ class MSDHandle
     /** Deinitializes MSD-related peripherals
      * 
      */
-    Result Deinit(DaisySeed& hw);
+    Result DeInit(DaisySeed& hw);
 
     /** Manages usb host functionality
      * 

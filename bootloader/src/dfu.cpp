@@ -33,7 +33,7 @@ class DFUHandle::Impl {
         Result MemoryWrite(uint8_t *src, uint8_t *dest, uint32_t Len);
         Result MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len);
         Result MemoryStatus(uint32_t Add, uint8_t Cmd, uint8_t *buffer);
-        Result Deinit();
+        Result DeInit();
 
         bool dfu_complete;
         bool dfu_initiated;
@@ -86,7 +86,7 @@ DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
     return Result::OK;
 }
 
-DFUHandle::Result DFUHandle::Impl::Deinit()
+DFUHandle::Result DFUHandle::Impl::DeInit()
 {
     __DSB();
 
@@ -101,7 +101,7 @@ DFUHandle::Result DFUHandle::Impl::Deinit()
     // the disconnect can happen without hanging
     System::Delay(100);
 
-    hw_->Deinit();
+    hw_->DeInit();
 
     return Result::OK;
 }
@@ -317,9 +317,9 @@ DFUHandle::Result DFUHandle::Init(DaisySeed* seed)
     return pimpl_->Init(seed);
 }
 
-DFUHandle::Result DFUHandle::Deinit()
+DFUHandle::Result DFUHandle::DeInit()
 {
-    return pimpl_->Deinit();
+    return pimpl_->DeInit();
 }
 
 bool DFUHandle::PollJump()

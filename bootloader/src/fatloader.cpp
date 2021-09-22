@@ -111,7 +111,7 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
 
     if (usb_mode && usb_initialized)
     {
-      msd.Deinit(hw);
+      msd.DeInit(hw);
     }
 
     return Result::PRESENT;

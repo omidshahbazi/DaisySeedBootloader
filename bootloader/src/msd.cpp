@@ -20,7 +20,7 @@ class MSDHandle::Impl {
     ~Impl() {}
 
     Result Init();
-    Result Deinit(DaisySeed& hw);
+    Result DeInit(DaisySeed& hw);
 
     void Process();
     bool GetReady();
@@ -55,7 +55,7 @@ MSDHandle::Result MSDHandle::Impl::Init()
   return Result::OK;
 }
 
-MSDHandle::Result MSDHandle::Impl::Deinit(DaisySeed& hw)
+MSDHandle::Result MSDHandle::Impl::DeInit(DaisySeed& hw)
 {
   USBH_Stop(&hUsbHostHS);
   USBH_DeInit(&hUsbHostHS);
@@ -81,9 +81,9 @@ MSDHandle::Result MSDHandle::Init()
   return pimpl_->Init();
 }
 
-MSDHandle::Result MSDHandle::Deinit(DaisySeed& hw)
+MSDHandle::Result MSDHandle::DeInit(DaisySeed& hw)
 {
-  return pimpl_->Deinit(hw);
+  return pimpl_->DeInit(hw);
 }
 
 bool MSDHandle::GetReady()

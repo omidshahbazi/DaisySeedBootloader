@@ -86,7 +86,7 @@ class Bootloader
 
   private:
 
-    Result Deinit();
+    Result DeInit();
     uint32_t FillTargetMemory();
 
     DaisySeed* hw_;
