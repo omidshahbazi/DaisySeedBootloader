@@ -17,7 +17,7 @@ int main(void)
 	boot.Init(hw);
 
 	while(1) {
-		Result res = TryLoadingFAT(hw, System::qspi_start - QSPI_INITIAL);
+		Result res = TryLoadingFAT(hw, System::kQspiStart - QSPI_INITIAL);
 
 		if (res == Result::ERR)
 		{

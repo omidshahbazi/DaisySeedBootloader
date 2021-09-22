@@ -80,7 +80,7 @@ uint32_t Bootloader::FillTargetMemory()
     {
         case System::AXI_SRAM:
         {
-            // sram_program = (uint8_t*) System::sram_start;
+            // sram_program = (uint8_t*) System::kSramStart;
             for (size_t i = 0; i < sizeof(sram_program); i++)
             {
                 sram_program[i] = qspi_buffer[i];
@@ -92,7 +92,7 @@ uint32_t Bootloader::FillTargetMemory()
         {
             // WARNING -- this will need to change with multi-programs 
             // (should be the beginning of the program, not the memory)
-            return System::qspi_start;
+            return System::kQspiStart;
         }
         default:
         {
@@ -118,7 +118,7 @@ void _Noreturn Bootloader::LoadProgram()
     // download failed or was invalid, or a program
     // has never been written to flash
     uint32_t* stack_ptr = (uint32_t*) qspi_buffer;
-    if (*stack_ptr != System::expected_stack)
+    if (*stack_ptr != System::kExpectedStack)
     {
         if (dfu.GetDfuComplete())
         {

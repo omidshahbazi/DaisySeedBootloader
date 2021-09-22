@@ -33,7 +33,7 @@ bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem)
   f_read(FatFS_File, &stack_ptr, sizeof(uint32_t), &read);
   f_read(FatFS_File, &entry_point, sizeof(uint32_t), &read);
 
-  if (stack_ptr != System::expected_stack)
+  if (stack_ptr != System::kExpectedStack)
   {
     return false; // no need to rewind if the file isn't valid
   }
@@ -48,11 +48,11 @@ bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem)
   switch (*mem)
   {
     case System::AXI_SRAM:
-      if (file_size > System::sram_end - System::sram_start)
+      if (file_size > System::kSramEnd - System::kSramStart)
         valid = false;
       break;
     case System::QSPI:
-      if (file_size > System::qspi_end - System::qspi_start)
+      if (file_size > System::kQspiEnd - System::kQspiStart)
         valid = false;
       break;
     default:
@@ -93,11 +93,11 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
       // switch (mem) 
       // {
       //   case System::AXI_SRAM:
-      //     if (data_written + data_read >= System::sram_end - System::sram_start)
+      //     if (data_written + data_read >= System::kSramEnd - System::kSramStart)
       //       return Result::ERR;
       //     break;
       //   case System::QSPI:
-      //     if (data_written + data_read >= System::qspi_end - System::qspi_start)
+      //     if (data_written + data_read >= System::kQspiEnd - System::kQspiStart)
       //       return Result::ERR;
       //     break;
       //   default:
