@@ -24,7 +24,7 @@ static MSDHandle msd;
 bool usb_mode = false;
 bool usb_initialized = false;
 
-bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem)
+bool EnsureValidBinary(size_t file_size, System::MemoryRegion* mem)
 {
   // right now, we're just expecting the raw binary
 	uint32_t stack_ptr;
@@ -33,27 +33,28 @@ bool EnsureValidBinary(size_t file_size, System::ProgramMemory* mem)
   f_read(FatFS_File, &stack_ptr, sizeof(uint32_t), &read);
   f_read(FatFS_File, &entry_point, sizeof(uint32_t), &read);
 
-  if (stack_ptr != System::kExpectedStack)
+  auto stack_location = System::GetMemoryRegion(stack_ptr);
+  if (stack_location == System::QSPI || stack_location == System::INTERNAL_FLASH || stack_location == System::INVALID_ADDRESS)
   {
     return false; // no need to rewind if the file isn't valid
   }
 
   // verifying that a valid memory space is used
-  *mem = System::GetProgramMemory(entry_point);
+  *mem = System::GetMemoryRegion(entry_point);
   bool valid = true;
-  if (*mem == System::ProgramMemory::INVALID_ADDRESS || *mem == System::ProgramMemory::INTERNAL_FLASH)
+  if (*mem == System::INVALID_ADDRESS || *mem == System::INTERNAL_FLASH)
     valid = false;
 
   // Verifying that the sizes match up
   switch (*mem)
   {
-    case System::AXI_SRAM:
-      if (file_size > System::kSramEnd - System::kSramStart)
-        valid = false;
+    case System::SRAM_D1:
+      // if (file_size > System::kSramEnd - System::kSramStart)
+      //   valid = false;
       break;
     case System::QSPI:
-      if (file_size > System::kQspiEnd - System::kQspiStart)
-        valid = false;
+      // if (file_size > System::kQspiEnd - System::kQspiStart)
+      //   valid = false;
       break;
     default:
       valid = false;
@@ -73,7 +74,7 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
 		return Result::ERR;
 	}
 
-  System::ProgramMemory mem;
+  System::MemoryRegion mem;
 
   if (EnsureValidBinary(file_size, &mem))
   {

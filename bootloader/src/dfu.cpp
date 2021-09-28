@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <stm32h750xx.h>
 
 #include "dfu.h"
 #include "daisy_seed.h"
@@ -138,7 +139,7 @@ DFUHandle::Result DFUHandle::Impl::MemoryRead(uint8_t *src, uint8_t *dest, uint3
 {
     // TODO -- this will need to change for multi-programs
     for (size_t i = 0; i < Len; i++)
-        dest[i] = *((__IO uint8_t*) System::kQspiStart + *src + i);
+        dest[i] = *((__IO uint8_t*) QSPI_BASE + *src + i);
         // dest[i] = qspi_buffer[*src + i];
     return Result::OK;
 }

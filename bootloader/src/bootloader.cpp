@@ -1,4 +1,5 @@
 #include <cstdint>
+#include "stm32h750xx.h"
 
 #include "bootloader.h"
 #include "daisy_seed.h"
@@ -74,11 +75,11 @@ void Bootloader::SosLed()
 uint32_t Bootloader::FillTargetMemory()
 {
     uint32_t entry_address = *(uint32_t*) (qspi_buffer + 4);
-    auto mem = System::GetProgramMemory(entry_address);
+    auto mem = System::GetMemoryRegion(entry_address);
 
     switch (mem)
     {
-        case System::AXI_SRAM:
+        case System::SRAM_D1:
         {
             // sram_program = (uint8_t*) System::kSramStart;
             for (size_t i = 0; i < sizeof(sram_program); i++)
@@ -92,7 +93,7 @@ uint32_t Bootloader::FillTargetMemory()
         {
             // WARNING -- this will need to change with multi-programs 
             // (should be the beginning of the program, not the memory)
-            return System::kQspiStart;
+            return QSPI_BASE + System::kQspiOffset;
         }
         default:
         {
@@ -118,7 +119,8 @@ void _Noreturn Bootloader::LoadProgram()
     // download failed or was invalid, or a program
     // has never been written to flash
     uint32_t* stack_ptr = (uint32_t*) qspi_buffer;
-    if (*stack_ptr != System::kExpectedStack)
+    auto mem = System::GetMemoryRegion(*stack_ptr);
+    if (mem == System::QSPI || mem == System::INTERNAL_FLASH || mem == System::INVALID_ADDRESS)
     {
         if (dfu.GetDfuComplete())
         {
