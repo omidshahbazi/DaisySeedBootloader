@@ -57,6 +57,8 @@ class DFUHandle
      */
     bool   PollJump();
 
+    void ResetPoll() { timeout_start_ = System::GetNow(); }
+
     /** Deinitializes DFU-related peripherals
      * 
      */
@@ -83,7 +85,7 @@ class DFUHandle
 
     Switch boot_button_;
 
-    static constexpr uint32_t timeout_ = 5000; // 5 seconds
+    static constexpr uint32_t timeout_ = 2500; // 2.5 seconds
     uint32_t timeout_start_;
     State state_;
 

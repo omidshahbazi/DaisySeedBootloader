@@ -63,12 +63,14 @@ class Bootloader
      */
     Result Init(DaisySeed& seed);
 
+    Result DeInit();
+
     /** Waits for the appropriate condition, then
      *  loads the target application and jumps to it.
      *  If no program is present, a DFU event is awaited.
      *  Attempts a jump immediately upon DFU completion.
      */
-    void   AwaitDFU();
+    uint8_t AwaitDFU();
 
     /** Retrieves the current state.
      * 
@@ -86,7 +88,6 @@ class Bootloader
 
   private:
 
-    Result DeInit();
     uint32_t FillTargetMemory();
 
     DaisySeed* hw_;

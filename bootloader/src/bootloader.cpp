@@ -3,6 +3,7 @@
 
 #include "bootloader.h"
 #include "daisy_seed.h"
+#include "fatloader.h"
 
 #include "usbd_def.h"
 #include "usbd_desc.h"
@@ -17,6 +18,8 @@ uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
 uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE - 32768];
 uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
+static constexpr uint32_t INVALID_ADDRESS = 0xFFFFFFFF;
+
 Bootloader::Result Bootloader::Init(DaisySeed& seed)
 {
     // dfu.Init(seed);
@@ -25,13 +28,17 @@ Bootloader::Result Bootloader::Init(DaisySeed& seed)
     pwm_tick_ = System::GetNow();
     angle_ = 0;
 
-    dfu_initialized_ = false;
-
     dfu_initialized_ = true;
     dfu.Init(hw_);
 
     // 200 ms seems to make this work (kinda scuffed!!)
     hw_->DelayMs(200);
+
+    // Zero fill the first few addresses to avoid reinit bugs
+    for (size_t i = 0; i < 32; i++)
+    {
+        sram_program[i] = 0;
+    }
 
     return Result::OK;
 }
@@ -39,6 +46,7 @@ Bootloader::Result Bootloader::Init(DaisySeed& seed)
 Bootloader::Result Bootloader::DeInit()
 {
     dfu.DeInit();
+    // Deinit_Fatfs();
     hw_->DeInit();
     return Result::OK;
 }
@@ -59,15 +67,14 @@ void Bootloader::SosLed()
     };
     bool led = true;
 
-    for (;;) 
+    for (unsigned int i = 0; i < sizeof(delays) / sizeof(delays[0]); i++) 
     {
-        for (unsigned int i = 0; i < sizeof(delays) / sizeof(delays[0]); i++) 
-        {
-            hw_->SetLed(led);
-            led = !led;
-            hw_->DelayMs(delays[i] * 100);
-        }
+        hw_->SetLed(led);
+        led = !led;
+        hw_->DelayMs(delays[i] * 100);
     }
+
+    dfu.ResetPoll();
 }
 
 // NOTE -- this is very destructive to any code that might attempt to run after
@@ -93,7 +100,7 @@ uint32_t Bootloader::FillTargetMemory()
         {
             // WARNING -- this will need to change with multi-programs 
             // (should be the beginning of the program, not the memory)
-            return QSPI_BASE + System::kQspiOffset;
+            return QSPI_BASE + System::kQspiBootloaderOffset;
         }
         default:
         {
@@ -101,40 +108,41 @@ uint32_t Bootloader::FillTargetMemory()
             // entry point is not, meaning the user should know their
             // build isn't going to work
             SosLed();
+            return INVALID_ADDRESS;
         }
     }
 
-    return 0; // to ward off any compiler complaints
+    return INVALID_ADDRESS;
 }
 
-void _Noreturn Bootloader::LoadProgram()
+void Bootloader::LoadProgram()
 {
-    // The data caching can cause issues if we've recently
-    // read QSPI and found no program in there, and then
-    // actually write a program there and try to load it.
-    // SCB_InvalidateDCache();
-    // __DSB();
-    
     // If the stack pointer isn't here, then either the
     // download failed or was invalid, or a program
     // has never been written to flash
     uint32_t* stack_ptr = (uint32_t*) qspi_buffer;
-    auto mem = System::GetMemoryRegion(*stack_ptr);
+    // The stack pointer itself won't be valid without any stack frames, so we subtract one
+    auto mem = System::GetMemoryRegion((*stack_ptr) - 1); 
     if (mem == System::QSPI || mem == System::INTERNAL_FLASH || mem == System::INVALID_ADDRESS)
     {
         if (dfu.GetDfuComplete())
         {
             // this means the DFU transaction occurred, but we downloaded
             // bad data. This requires a restart to reset the DFU state machine
+            // TODO -- manage proper restart here
             SosLed();
+            return;
         }
         return;
     }
 
+    uint32_t program_start = FillTargetMemory();
+
+    if (program_start == INVALID_ADDRESS)
+        return;
+
     hw_->SetLed(false);
     DeInit();
-
-    uint32_t program_start = FillTargetMemory();
     
     // disable interupts NOTE -- These two seem to cause
     // errors for the target application
@@ -151,7 +159,7 @@ void _Noreturn Bootloader::LoadProgram()
     application();
 }
 
-void Bootloader::AwaitDFU()
+uint8_t Bootloader::AwaitDFU()
 {
     if (!dfu_initialized_)
     {
@@ -161,8 +169,11 @@ void Bootloader::AwaitDFU()
     if (dfu.PollJump())
     {
         LoadProgram();
+        // If we got here without jumping, we encountered an error
+        return 1;
     }
     SineLed();
+    return 0;
 }
 
 void Bootloader::SineLed()

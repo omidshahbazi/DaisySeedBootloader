@@ -14,22 +14,43 @@ int main(void)
 
 	SCB_DisableDCache();
 
+	bool attempted_fat = false;
+
+	restart:
+
 	boot.Init(hw);
 
-	while(1) {
-		Result res = TryLoadingFAT(hw, System::kQspiOffset);
-
-		if (res == Result::ERR)
+	while(1) 
+	{
+		if (!attempted_fat)
 		{
-			// Either there was a .bin file with an invalid executable or
-			// an drive was present that failed to mount / open
-			boot.SosLed();
-		}
-		else if (res == Result::PRESENT)
-		{ 
-			boot.LoadProgram();
+			Result res = TryLoadingFAT(hw, System::kQspiBootloaderOffset);
+			if (res == Result::ERR)
+			{
+				// Either there was a .bin file with an invalid executable or
+				// an drive was present that failed to mount / open
+				boot.SosLed();
+				attempted_fat = true;
+			}
+			else if (res == Result::PRESENT)
+			{ 
+				boot.LoadProgram();
+				// If we got here without restarting, the loading encountered an error
+				attempted_fat = true;
+				// boot.DeInit();
+				// goto restart;
+			}
+			else if (res == Result::ALREADY_LOADED)
+			{
+				attempted_fat = true;
+			}
 		}
 
-		boot.AwaitDFU();
+		uint8_t error = boot.AwaitDFU();
+		if (error)
+		{
+			boot.DeInit();
+			goto restart;
+		}
 	}
 }
