@@ -120,27 +120,43 @@ DFUHandle::Result DFUHandle::Impl::MemoryErase(uint32_t Add)
 {
     // DFU download has begun, so we shouldn't allow a jump
     // to happen before it completes
-    dfu_initiated = true;
-    Add -= addr_offset_;
-    hw_->qspi.Erase(Add, Add + sector_size_);
-    return Result::OK;
+
+    if (System::GetMemoryRegion(Add) == System::MemoryRegion::QSPI)
+    {
+        dfu_initiated = true;
+        Add -= addr_offset_;
+        hw_->qspi.Erase(Add, Add + sector_size_);
+        return Result::OK;
+    }
+
+    return Result::ERR;
 }
 
 DFUHandle::Result DFUHandle::Impl::MemoryWrite(uint8_t *src, uint8_t *dest, uint32_t Len)
 {
-    uint32_t write_addr = (uint32_t) dest - addr_offset_;
-    hw_->qspi.Write(write_addr, Len, src);
-    data_written_ += Len;
-    return Result::OK;
+    if (System::GetMemoryRegion((uint32_t) dest) == System::MemoryRegion::QSPI)
+    {
+        uint32_t write_addr = (uint32_t) dest - addr_offset_;
+        hw_->qspi.Write(write_addr, Len, src);
+        data_written_ += Len;
+        return Result::OK;
+    }
+
+    return Result::ERR;
 }
 
 DFUHandle::Result DFUHandle::Impl::MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len)
 {
-    // TODO -- this will need to change for multi-programs
-    for (size_t i = 0; i < Len; i++)
-        dest[i] = *((__IO uint8_t*) QSPI_BASE + *src + i);
-        // dest[i] = qspi_buffer[*src + i];
-    return Result::OK;
+    if (System::GetMemoryRegion((uint32_t) src) == System::MemoryRegion::QSPI)
+    {
+        // TODO -- this will need to change for multi-programs
+        for (size_t i = 0; i < Len; i++)
+            dest[i] = *((__IO uint8_t*) QSPI_BASE + *src + i);
+            // dest[i] = qspi_buffer[*src + i];
+        return Result::OK;
+    }
+
+    return Result::ERR;
 }
 
 DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8_t *buffer)
