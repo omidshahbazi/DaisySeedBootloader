@@ -79,7 +79,8 @@ Result EnsureValidBinary(size_t file_size, System::MemoryRegion* mem, uint32_t b
   f_read(&FatfsFile, &stack_ptr, sizeof(uint32_t), &read);
   f_read(&FatfsFile, &entry_point, sizeof(uint32_t), &read);
 
-  auto stack_location = System::GetMemoryRegion(stack_ptr);
+  // The -1 places the stack_ptr within the actual memory space
+  auto stack_location = System::GetMemoryRegion(stack_ptr - 1);
   if (stack_location == System::QSPI || stack_location == System::INTERNAL_FLASH || stack_location == System::INVALID_ADDRESS)
   {
     return Result::ERR; // no need to rewind if the file isn't valid
@@ -114,7 +115,7 @@ Result EnsureValidBinary(size_t file_size, System::MemoryRegion* mem, uint32_t b
   bool identical = true;
   UINT data_read;
   uint32_t data_written = 0;
-  uint8_t* qspi_ptr = (uint8_t*) base_address;
+  uint8_t* qspi_ptr = (uint8_t*) (base_address + QSPI_INITIAL);
   do 
   {
     f_read(&FatfsFile, file_data, FILE_BUFF_LEN, &data_read);
@@ -134,6 +135,8 @@ Result EnsureValidBinary(size_t file_size, System::MemoryRegion* mem, uint32_t b
     data_written += data_read;
   }
   while (data_read == FILE_BUFF_LEN);
+
+  f_rewind(&FatfsFile);
 
   if (identical)
     valid = Result::ALREADY_LOADED; 
@@ -207,7 +210,6 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
   }
   else
   {
-    // sos?
     UpdateLog(false, info->fname, base_address, "file does not contain executable code");
     return Result::ERR;
   }
