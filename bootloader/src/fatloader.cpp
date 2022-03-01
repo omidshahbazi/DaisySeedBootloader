@@ -25,7 +25,52 @@ static USBHostHandle msd;
 bool usb_mode = false;
 bool usb_initialized = false;
 
-bool EnsureValidBinary(size_t file_size, System::MemoryRegion* mem)
+/** Provides a status log */
+static void UpdateLog(bool success, const char* attempted_file, uint32_t address, const char* message)
+{
+  address += QSPI_INITIAL;
+  // create / update the log
+  size_t log_number = 1;
+  if (f_open(&FatfsFile, BOOTLOADER_LOG_NAME, FA_READ) == FR_OK)
+	{
+		// The file exists, so we need to count how many entries it has.
+    // Newlines will be our proxy for this.
+    UINT data_read;
+    do 
+    {
+      f_read(&FatfsFile, file_data, FILE_BUFF_LEN, &data_read);
+      for (size_t i = 0; i < data_read; i++)
+        if (file_data[i] == '\n')
+          log_number++;
+    }
+    while (data_read == FILE_BUFF_LEN);
+
+    f_close(&FatfsFile);
+	}
+
+  if (f_open(&FatfsFile, BOOTLOADER_LOG_NAME, FA_WRITE | FA_OPEN_APPEND) == FR_OK)
+  {
+    UINT data_to_write;
+    UINT data_written;
+    char write_buffer[256];
+
+    if (success)
+    {
+      data_to_write = sprintf(write_buffer, 
+        "%d. Successfully flashed file \"%s\" to address 0x%08lX\n", log_number, attempted_file, address);
+    }
+    else
+    {
+      data_to_write = sprintf(write_buffer, 
+        "%d. Encountered error when attempting to flash \"%s\" to address 0x%08lX: %s\n", log_number, attempted_file, address, message);
+    }
+
+    f_write(&FatfsFile, write_buffer, data_to_write, &data_written);
+    f_close(&FatfsFile);
+  }
+}
+
+Result EnsureValidBinary(size_t file_size, System::MemoryRegion* mem, uint32_t base_address)
 {
   // right now, we're just expecting the raw binary
 	uint32_t stack_ptr;
@@ -102,6 +147,7 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
 
 	if (f_open(&FatfsFile, info->fname, FA_OPEN_EXISTING | FA_READ) != FR_OK)
 	{
+    UpdateLog(false, info->fname, base_address, "unable to open file");
 		return Result::ERR;
 	}
 
@@ -149,6 +195,8 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
     }
     while (data_read == FILE_BUFF_LEN);
 
+    UpdateLog(true, info->fname, base_address, "");
+
     if (usb_mode && usb_initialized)
     {
       msd.Deinit();
@@ -160,6 +208,7 @@ Result LoadFAT(DaisySeed& hw, FILINFO* info, uint32_t base_address)
   else
   {
     // sos?
+    UpdateLog(false, info->fname, base_address, "file does not contain executable code");
     return Result::ERR;
   }
   
