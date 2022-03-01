@@ -16,10 +16,6 @@ int main(void)
 
 	bool attempted_fat = false;
 
-	restart:
-
-	boot.Init(hw);
-
 	while(1) 
 	{
 		if (!attempted_fat)
@@ -50,7 +46,7 @@ int main(void)
 		if (error)
 		{
 			boot.DeInit();
-			goto restart;
+			boot.Init(hw);
 		}
 	}
 }
