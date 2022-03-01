@@ -49,6 +49,7 @@ int main(void)
 		{
 			boot.DeInit();
 			boot.Init(hw);
+			boot.TriggerSos();
 		}
 	}
 }
