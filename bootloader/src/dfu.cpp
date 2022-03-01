@@ -41,7 +41,6 @@ class DFUHandle::Impl {
 
     private:
 
-        void SosLed();
         static constexpr uint32_t addr_offset_ = 0x90000000U;
         static constexpr uint32_t sector_size_ = 0x10000U;
 
@@ -173,33 +172,6 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
     return Result::OK;
 }
 
-void DFUHandle::Impl::SosLed()
-{
-    // If we get here, the program should block until given a manual reset
-    uint8_t delays[] = {
-        1, 1,
-        1, 1,
-        1, 2,
-        3, 1,
-        3, 1,
-        3, 2,
-        1, 1,
-        1, 1,
-        1, 5,
-    };
-    bool led = true;
-
-    for (;;) 
-    {
-        for (unsigned int i = 0; i < sizeof(delays) / sizeof(delays[0]); i++) 
-        {
-            hw_->SetLed(led);
-            led = !led;
-            hw_->DelayMs(delays[i] * 100);
-        }
-    }
-}
-
 extern "C" 
 {
     // The chip is split into 3 regions -- the first 256k is broken into 64 4K 
@@ -323,7 +295,7 @@ DFUHandle::Result DFUHandle::DeInit()
     return pimpl_->DeInit();
 }
 
-bool DFUHandle::PollJump()
+bool DFUHandle::PollJump(bool delay_timeout)
 {
     // Prevents a jump during DFU download
     if (pimpl_->dfu_initiated)
@@ -337,7 +309,7 @@ bool DFUHandle::PollJump()
     }
 
     bool timeout_elapsed = System::GetNow() - timeout_start_ > timeout_;
-    if (pimpl_->dfu_complete || (timeout_elapsed && state_ == State::WAITING_ON_TIMEOUT))
+    if (pimpl_->dfu_complete || (timeout_elapsed && state_ == State::WAITING_ON_TIMEOUT && !delay_timeout))
     {
         // If this method is called again, then the program failed to load, meaning
         // there's likely no program in flash

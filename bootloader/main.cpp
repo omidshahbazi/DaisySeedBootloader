@@ -29,7 +29,7 @@ int main(void)
 			{
 				// Either there was a .bin file with an invalid executable or
 				// an drive was present that failed to mount / open
-				boot.SosLed();
+				boot.TriggerSos();
 				attempted_fat = true;
 			}
 			else if (res == Result::PRESENT)

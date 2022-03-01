@@ -55,7 +55,7 @@ class DFUHandle
      * 
      *  \returns True if the bootloader should jump
      */
-    bool   PollJump();
+    bool   PollJump(bool delay_timeout = false);
 
     void ResetPoll() { timeout_start_ = System::GetNow(); }
 

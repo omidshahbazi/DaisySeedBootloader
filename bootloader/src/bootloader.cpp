@@ -40,6 +40,8 @@ Bootloader::Result Bootloader::Init(DaisySeed& seed)
         sram_program[i] = 0;
     }
 
+    do_sos_ = false;
+
     return Result::OK;
 }
 
@@ -49,32 +51,6 @@ Bootloader::Result Bootloader::DeInit()
     // Deinit_Fatfs();
     hw_->DeInit();
     return Result::OK;
-}
-
-void Bootloader::SosLed()
-{
-    // If we get here, the program should block until given a manual reset
-    uint8_t delays[] = {
-        1, 1,
-        1, 1,
-        1, 2,
-        3, 1,
-        3, 1,
-        3, 2,
-        1, 1,
-        1, 1,
-        1, 5,
-    };
-    bool led = true;
-
-    for (unsigned int i = 0; i < sizeof(delays) / sizeof(delays[0]); i++) 
-    {
-        hw_->SetLed(led);
-        led = !led;
-        hw_->DelayMs(delays[i] * 100);
-    }
-
-    dfu.ResetPoll();
 }
 
 // NOTE -- this is very destructive to any code that might attempt to run after
@@ -107,7 +83,7 @@ uint32_t Bootloader::FillTargetMemory()
             // If we got here, then the stack address is valid, but the 
             // entry point is not, meaning the user should know their
             // build isn't going to work
-            SosLed();
+            TriggerSos();
             return INVALID_ADDRESS;
         }
     }
@@ -130,7 +106,7 @@ void Bootloader::LoadProgram()
             // this means the DFU transaction occurred, but we downloaded
             // bad data. This requires a restart to reset the DFU state machine
             // TODO -- manage proper restart here
-            SosLed();
+            TriggerSos();
             return;
         }
         return;
@@ -166,7 +142,7 @@ uint8_t Bootloader::AwaitDFU()
         // dfu_initialized_ = true;
         // dfu.Init(hw_);
     }
-    if (dfu.PollJump())
+    if (dfu.PollJump(do_sos_))
     {
         LoadProgram();
         // If we got here without jumping, we encountered an error
@@ -178,13 +154,59 @@ uint8_t Bootloader::AwaitDFU()
 
 void Bootloader::SineLed()
 {
-    uint32_t time = System::GetNow();
-    if (time > pwm_tick_)
+    if (do_sos_)
     {
-        pwm_tick_ = time;
-        angle_ += (2 * M_PI / 1000.f) / sine_hz_;
-        bool led = sin(angle_) * sine_fid_ + sine_fid_ - 1 > time % (sine_fid_ * 2);
-        hw_->SetLed(led);   
+        SosLed();
+    }
+    else
+    {
+        uint32_t time = System::GetNow();
+        if (time > pwm_tick_)
+        {
+            pwm_tick_ = time;
+            angle_ += (2 * M_PI / 1000.f) / sine_hz_;
+            bool led = sin(angle_) * sine_fid_ + sine_fid_ - 1 > time % (sine_fid_ * 2);
+            hw_->SetLed(led);   
+        }
+    }
+}
+
+void Bootloader::TriggerSos()
+{
+    do_sos_ = true;
+    sos_led_ = true;
+    sos_step_ = 0;
+    sos_tick_ = System::GetNow();
+    hw_->SetLed(sos_led_);
+}
+
+void Bootloader::SosLed()
+{
+    // If we get here, the program should block until given a manual reset
+    const uint8_t delays[] = {
+        1, 1,
+        1, 1,
+        1, 2,
+        3, 1,
+        3, 1,
+        3, 2,
+        1, 1,
+        1, 1,
+        1, 5,
+    };
+    
+    uint32_t now = System::GetNow();
+    if ((now - sos_tick_) / 80 >= delays[sos_step_])
+    {
+        sos_step_++;
+        sos_tick_ = now;
+        sos_led_ = !sos_led_;
+        hw_->SetLed(sos_led_);
+        if (sos_step_ >= sizeof(delays))
+        {
+            do_sos_ = false;
+            dfu.ResetPoll();
+        }
     }
 }
 

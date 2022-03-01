@@ -83,12 +83,13 @@ class Bootloader
     void LoadProgram();
 
     void SineLed();
+    void TriggerSos();
     void HappyBlink();
-    void SosLed();
 
   private:
 
     uint32_t FillTargetMemory();
+    void SosLed();
 
     DaisySeed* hw_;
 
@@ -100,6 +101,11 @@ class Bootloader
     static constexpr uint32_t timeout_ = 5000; // 5 seconds
     uint32_t timeout_start_;
     State state_;
+
+    bool do_sos_;
+    bool sos_led_;
+    uint32_t sos_tick_;
+    uint32_t sos_step_;
 
     static constexpr uint32_t sine_fid_ = 10;
     static constexpr uint32_t sine_hz_ = 1.f;
