@@ -16,6 +16,8 @@ int main(void)
 
 	bool attempted_fat = false;
 
+	boot.Init(hw);
+
 	while(1) 
 	{
 		if (!attempted_fat)
