@@ -13,7 +13,6 @@ int main(void) {
   bool led_state;
   led_state = true;
 
-  hardware.Configure();
   hardware.Init();
 
   for (;;) {
