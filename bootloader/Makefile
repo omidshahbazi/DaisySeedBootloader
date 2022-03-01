@@ -5,22 +5,24 @@ TARGET = main
 CPP_SOURCES = main.cpp \
 src/bootloader.cpp \
 src/dfu.cpp \
-src/fatloader.cpp \
-src/msd.cpp
+src/fatloader.cpp
 
-C_SOURCES += \
-src/fatfs/fatfs_usbh.c \
-src/fatfs/usbh_diskio.c
+# src/msd.cpp
 
-C_SOURCES += \
-../cube_dfu/USB_HOST/Target/usbh_conf.c \
-../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_bot.c \
-../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_scsi.c \
-../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc.c \
-../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_core.c \
-../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ctlreq.c \
-../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ioreq.c \
-../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_pipes.c
+# C_SOURCES += \
+# src/fatfs/fatfs_usbh.c \
+# src/fatfs/usbh_diskio.c
+
+# C_SOURCES += \
+# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_bot.c \
+# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_scsi.c \
+# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc.c \
+# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_core.c \
+# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ctlreq.c \
+# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ioreq.c \
+# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_pipes.c
+
+# ../cube_dfu/USB_HOST/Target/usbh_conf.c 
 
 USE_FATFS = 1
 
@@ -41,12 +43,13 @@ C_SOURCES += \
 
 C_INCLUDES += \
 -I. \
--Isrc/fatfs \
 -I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc \
--I../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc \
--I../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Inc \
--I../cube_dfu/USB_DEVICE/App \
--I../cube_dfu/USB_HOST/Target
+-I../cube_dfu/USB_DEVICE/App 
+
+# -Isrc/fatfs
+# -I../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc
+# -I../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Inc
+# -I../cube_dfu/USB_HOST/Target
 
 # -I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/Inc 
 
