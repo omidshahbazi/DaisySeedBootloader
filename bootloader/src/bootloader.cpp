@@ -209,15 +209,3 @@ void Bootloader::SosLed()
         }
     }
 }
-
-void Bootloader::HappyBlink()
-{
-    unsigned int time = 50;
-    for (int i = 0; i < 2; i++)
-    {
-        hw_->SetLed(true);
-        System::Delay(time);
-        hw_->SetLed(false);
-        System::Delay(time);
-    }
-}

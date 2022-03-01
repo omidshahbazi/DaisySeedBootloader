@@ -84,7 +84,6 @@ class Bootloader
 
     void SineLed();
     void TriggerSos();
-    void HappyBlink();
 
   private:
 
