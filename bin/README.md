@@ -1,5 +1,12 @@
 # Changelog
 
+## v5.0.0
+* Added transaction logging for FatFS interactions
+* FatFS interactions will only overwrite QSPI if the program is different from the one stored
+* DFU class descriptor now uses 0xA360 PID, with "Electromsith" manufacturer string and "Daisy Bootloader" product string
+* If the FatFS interface finds an invalid binary, the Daisy emits a single SOS and then ignores connected FatFS media (operating as if it were unconnected)
+* Startup time reduced from 5 seconds to 2.5
+
 ## v4.0.0
 * Added USB Mass Storage Device bootloading capabilities
   * The FatFS code now supports USB drives
