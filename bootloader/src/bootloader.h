@@ -4,6 +4,7 @@
 #include <cstdint>
 #include "daisy_seed.h"
 #include "dfu.h"
+#include "fatfs.h"
 
 namespace daisy
 {
@@ -11,106 +12,166 @@ namespace daisy
 @{
 */
 
-#define SRAM_SPACE    0x80000U
+#define SRAM_SPACE 0x80000U
 #define ITCMRAM_SPACE 0x10000U
 #define PROGRAM_SPACE SRAM_SPACE + ITCMRAM_SPACE
-#define EXEC_START    0x24000000U
+#define EXEC_START 0x24000000U
 
 // TODO --  also make this part of qspi
 #define QSPI_INITIAL 0x90000000U
 
-#define DSY_SRAM_EXEC    __attribute__((section( ".sram_exec")))
-#define DSY_ITCMRAM_EXEC __attribute__((section( ".itcmram_exec")))
+#define DSY_SRAM_EXEC __attribute__((section(".sram_exec")))
+#define DSY_ITCMRAM_EXEC __attribute__((section(".itcmram_exec")))
 
-/** 
-   @author Gabriel Ball
-   @date 14 July, 2021
+/**
+   @author Corvus Prudens
+    @date 14 July, 2021
 
-   @brief Presents a DFU device and endpoints to the USB host,
-   and downloads an application if initiated within 5 seconds.
-   Jumps to existing program after if present. Breathing LED indicates
-   idle bootloader. An SOS pattern indicates the application is not
-   correctly configured to run from the bootloader.
+    @brief Presents a DFU device and endpoints to the USB host,
+    and downloads an application if initiated within 5 seconds.
+    Jumps to existing program after if present. Breathing LED indicates
+    idle bootloader. An SOS pattern indicates the application is not
+    correctly configured to run from the bootloader.
 */
 class Bootloader
 {
   public:
     enum Result
     {
-        OK = 0,
-        ERR
+      OK = 0,
+      ERR
     };
 
-    /** Configuration structure for interfacing with DFU Driver */
-    struct Config
+    enum State
     {
-
-    };
-
-    /** Describes the class state. 
-     */
-    enum State {
-      WAITING_ON_TIMEOUT = 0,
-      WAITING_ON_DFU
+      CHECK_SD = 0,
+      CHECK_USB,
+      CHECK_DFU,
+      CHECK_TIMEOUT,
     };
 
     Bootloader() {}
     ~Bootloader() {}
 
-    /** Initializes the USB drivers and starts timeout.
-     * 
+    /** Initializes the Bootloader manager
+     *
      *  \param seed Pointer to initialized seed hardware class
      */
-    Result Init(DaisySeed& seed);
+    Result Init(DaisySeed &seed);
 
-    Result DeInit();
-
-    /** Waits for the appropriate condition, then
-     *  loads the target application and jumps to it.
-     *  If no program is present, a DFU event is awaited.
-     *  Attempts a jump immediately upon DFU completion.
+    /** A separate initialization for IO that takes some time.
+     *  Should be called after Init and before any LoopProcess calls.
+     *  This permits an immediate interface  startup so the bootloader
+     *  _feels_ fast.
      */
-    uint8_t AwaitDFU();
+    Result IoInit();
 
-    /** Retrieves the current state.
-     * 
+    /** Handles audio and interface related processes. Currently
+     *  only updates the LED and button states, but may include
+     *  audio-based firmware updating in the future.
      */
-    State  GetState() { return state_; }
+    void AudioProcess(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size);
 
-    Bootloader(const Bootloader& other) = default;
-    Bootloader& operator=(const Bootloader& other) = default;
+    /** Handles the main bootloader state machine, and jumps to
+     *  the target application if the conditions are right.
+     */
+    void LoopProcess();
 
-    void LoadProgram();
+    /** Triggers an error sequence on the user LED
+     *  \param error_code the number of times the LED will blink in sequence
+     */
+    void TriggerError(uint8_t error_code);
 
-    void SineLed();
-    void TriggerSos();
+    Bootloader(const Bootloader &other) = default;
+    Bootloader &operator=(const Bootloader &other) = default;
 
   private:
+    Result DeInit();
+
+    Result InitDFU();
+    Result DeinitDFU();
+    void LoadProgramAndJump(uint8_t error_code);
+    void ManageLed();
 
     uint32_t FillTargetMemory();
-    void SosLed();
+    void ErrorLed();
+    void HappyLed();
 
-    DaisySeed* hw_;
+    void ResetTimeout() { timeout_start_ = System::GetNow(); }
+
+    enum FatfsResult
+    {
+      ABSENT,
+      PRESENT,
+      ALREADY_LOADED,
+      QUERYING,
+      ERROR,
+    };
+
+    // FatFS operations
+    void UpdateLog(bool success, const char *attempted_file, uint32_t address, const char *message);
+    FatfsResult EnsureValidBinary(size_t file_size, System::MemoryRegion *mem);
+    FatfsResult LoadFAT(FILINFO *info);
+    FatfsResult SearchBin();
+    FatfsResult TryLoadingSD();
+    FatfsResult TryLoadingUSB();
+    void DeinitFatfs();
+
+    enum FatfsMount
+    {
+      NONE = 0,
+      SD,
+      USB,
+    };
+
+    const char *FatFS_Path_;
+    FATFS *FatFS_Obj_;
+
+    SdmmcHandler sd_;
+    FatFSInterface fsi_;
+    USBHostHandle msd_;
+
+    bool sd_skip_;
+    bool usb_skip_;
+    FIL FatfsFile_;
+
+    static constexpr const char *BOOTLOADER_LOG_NAME = "daisy_boot_log.txt";
+    static constexpr uint32_t PAGE_SIZE = 65536;
+    static constexpr uint32_t FILE_BUFF_LEN = 65536;
+
+    static constexpr uint32_t HAPPY_BLINKS = 10;
+    static constexpr uint32_t HAPPY_PERIOD_MS = 50;
+    static constexpr uint32_t ERROR_PERIOD_MS = 200;
+
+    DaisySeed *hw_;
 
     DFUHandle dfu;
 
-    // Switch boot_button_; // handled by the dfu class at the moment
-    bool dfu_initialized_;
-
-    static constexpr uint32_t timeout_ = 5000; // 5 seconds
-    uint32_t timeout_start_;
     State state_;
 
-    bool do_sos_;
-    bool sos_led_;
-    uint32_t sos_tick_;
-    uint32_t sos_step_;
+    Switch boot_button_;
+    bool boot_button_pressed_;
+    bool dfu_initialized_;
+
+    bool downloading_binary_;
+    bool do_error_;
+    bool error_led_;
+    uint32_t error_tick_;
+    uint32_t error_step_;
+    uint8_t error_code_;
+
+    bool do_happy_;
+    bool happy_led_;
+    uint32_t happy_tick_;
+    uint32_t happy_step_;
 
     static constexpr uint32_t sine_fid_ = 10;
     static constexpr uint32_t sine_hz_ = 1.f;
     float angle_;
     uint32_t pwm_tick_;
 
+    static constexpr uint32_t timeout_ = 2000; // 2 seconds
+    uint32_t timeout_start_;
 };
 
 /** @} */

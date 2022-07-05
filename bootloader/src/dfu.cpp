@@ -2,7 +2,6 @@
 #include <stm32h750xx.h>
 
 #include "dfu.h"
-#include "daisy_seed.h"
 
 #include "usbd_def.h"
 #include "usbd_desc.h"
@@ -21,43 +20,42 @@ extern "C"
     void enable_jump();
 }
 
-class DFUHandle::Impl {
-    public:
-        Impl() {}
-        ~Impl() {}
+class DFUHandle::Impl
+{
+public:
+    Impl() {}
+    ~Impl() {}
 
-        Result Init(DaisySeed* seed);
+    Result Init(QSPIHandle* qspi);
 
-        Result MemoryInit();
-        Result MemoryDeinit();
-        Result MemoryErase(uint32_t Add);
-        Result MemoryWrite(uint8_t *src, uint8_t *dest, uint32_t Len);
-        Result MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len);
-        Result MemoryStatus(uint32_t Add, uint8_t Cmd, uint8_t *buffer);
-        Result DeInit();
+    Result MemoryInit();
+    Result MemoryDeinit();
+    Result MemoryErase(uint32_t Add);
+    Result MemoryWrite(uint8_t *src, uint8_t *dest, uint32_t Len);
+    Result MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len);
+    Result MemoryStatus(uint32_t Add, uint8_t Cmd, uint8_t *buffer);
+    Result DeInit();
 
-        bool dfu_complete;
-        bool dfu_initiated;
+    bool dfu_complete;
+    bool dfu_initiated;
 
-    private:
+private:
+    static constexpr uint32_t addr_offset_ = 0x90000000U;
+    static constexpr uint32_t sector_size_ = 0x10000U;
 
-        static constexpr uint32_t addr_offset_ = 0x90000000U;
-        static constexpr uint32_t sector_size_ = 0x10000U;
-
-        size_t data_written_;
-        DaisySeed* hw_;
-        
+    QSPIHandle* qspi_;
+    size_t data_written_;
 };
 
 // Global dfu handle
 DFUHandle::Impl dfu_impl;
 
-DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
+DFUHandle::Result DFUHandle::Impl::Init(QSPIHandle* qspi)
 {
-    uint8_t* clear_ptr = (uint8_t*) &hUsbDeviceFS;
+    uint8_t *clear_ptr = (uint8_t *)&hUsbDeviceFS;
     for (size_t i = 0; i < sizeof(USBD_HandleTypeDef); i++)
         *clear_ptr++ = 0;
-    
+
     if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
     {
         return Result::ERR;
@@ -77,31 +75,25 @@ DFUHandle::Result DFUHandle::Impl::Init(DaisySeed* seed)
     }
     HAL_PWREx_EnableUSBVoltageDetector();
 
-    hw_ = seed;
-
     data_written_ = 0;
     dfu_complete = false;
     dfu_initiated = false;
+
+    qspi_ = qspi;
 
     return Result::OK;
 }
 
 DFUHandle::Result DFUHandle::Impl::DeInit()
 {
-    __DSB();
-
     if (USBD_DeInit(&hUsbDeviceFS) != USBD_OK)
         return Result::ERR;
-    HAL_PWREx_DisableUSBVoltageDetector();
-
-    __DSB();
+    // HAL_PWREx_DisableUSBVoltageDetector();
 
     // TODO -- create mechanism to ensure the
     // deinit happens after USB disconnect so
     // the disconnect can happen without hanging
     System::Delay(100);
-
-    hw_->DeInit();
 
     return Result::OK;
 }
@@ -125,7 +117,7 @@ DFUHandle::Result DFUHandle::Impl::MemoryErase(uint32_t Add)
     {
         dfu_initiated = true;
         Add -= addr_offset_;
-        hw_->qspi.Erase(Add, Add + sector_size_);
+        qspi_->Erase(Add, Add + sector_size_);
         return Result::OK;
     }
 
@@ -134,10 +126,10 @@ DFUHandle::Result DFUHandle::Impl::MemoryErase(uint32_t Add)
 
 DFUHandle::Result DFUHandle::Impl::MemoryWrite(uint8_t *src, uint8_t *dest, uint32_t Len)
 {
-    if (System::GetMemoryRegion((uint32_t) dest) == System::MemoryRegion::QSPI)
+    if (System::GetMemoryRegion((uint32_t)dest) == System::MemoryRegion::QSPI)
     {
-        uint32_t write_addr = (uint32_t) dest - addr_offset_;
-        hw_->qspi.Write(write_addr, Len, src);
+        uint32_t write_addr = (uint32_t)dest - addr_offset_;
+        qspi_->Write(write_addr, Len, src);
         data_written_ += Len;
         return Result::OK;
     }
@@ -147,12 +139,12 @@ DFUHandle::Result DFUHandle::Impl::MemoryWrite(uint8_t *src, uint8_t *dest, uint
 
 DFUHandle::Result DFUHandle::Impl::MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len)
 {
-    if (System::GetMemoryRegion((uint32_t) src) == System::MemoryRegion::QSPI)
+    if (System::GetMemoryRegion((uint32_t)src) == System::MemoryRegion::QSPI)
     {
         // TODO -- this will need to change for multi-programs
         for (size_t i = 0; i < Len; i++)
-            dest[i] = *((__IO uint8_t*) QSPI_BASE + *src + i);
-            // dest[i] = qspi_buffer[*src + i];
+            dest[i] = *((__IO uint8_t *)QSPI_BASE + *src + i);
+        // dest[i] = qspi_buffer[*src + i];
         return Result::OK;
     }
 
@@ -163,19 +155,19 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
 {
     switch (Cmd)
     {
-        case DFU_MEDIA_PROGRAM:
-        buffer[0] = 0;  // bStatus (0 = OK) TODO -- make this actually check the status
+    case DFU_MEDIA_PROGRAM:
+        buffer[0] = 0; // bStatus (0 = OK) TODO -- make this actually check the status
         // I'm assuming this is little-endian
         // 3 -> 3 milliseconds (0.2 typ page program * 16 (= 4096 bytes))
-        buffer[1] = 3;  // bwPollTimeout 0
-        buffer[2] = 0;  // bwPollTimeout 1
-        buffer[3] = 0;  // bwPollTimeout 2
-        buffer[4] = 4;  // bState (4 = dfuDNBUSY)
-        buffer[5] = 0;  // no state string
+        buffer[1] = 3; // bwPollTimeout 0
+        buffer[2] = 0; // bwPollTimeout 1
+        buffer[3] = 0; // bwPollTimeout 2
+        buffer[4] = 4; // bState (4 = dfuDNBUSY)
+        buffer[5] = 0; // no state string
         break;
 
-        default:
-        case DFU_MEDIA_ERASE:
+    default:
+    case DFU_MEDIA_ERASE:
         // 150 milliseconds typ 64k erase
         buffer[0] = 0;   // bStatus (0 = OK) TODO -- make this actually check the status
         buffer[1] = 150; // bwPollTimeout 0
@@ -188,32 +180,31 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
     return Result::OK;
 }
 
-extern "C" 
+extern "C"
 {
-    // The chip is split into 3 regions -- the first 256k is broken into 64 4K 
-    // segments so smaller portions can be rewritten if necessary (say we need
-    // a lookup table or something). The rest of the chip is split in two because
-    // this memory layout syntax is very limited, and the number of segments
-    // can only be two digits (so 124*64Kg isn't possible).
-    #define FLASH_INT_STR "@Flash /0x90000000/64*4Kg/0x90040000/60*64Kg/0x90400000/60*64Kg"
+// The chip is split into 3 regions -- the first 256k is broken into 64 4K
+// segments so smaller portions can be rewritten if necessary (say we need
+// a lookup table or something). The rest of the chip is split in two because
+// this memory layout syntax is very limited, and the number of segments
+// can only be two digits (so 124*64Kg isn't possible).
+#define FLASH_INT_STR "@Flash /0x90000000/64*4Kg/0x90040000/60*64Kg/0x90400000/60*64Kg"
 
     uint16_t MEM_If_Init_FS(void);
     uint16_t MEM_If_Erase_FS(uint32_t Add);
     uint16_t MEM_If_Write_FS(uint8_t *src, uint8_t *dest, uint32_t Len);
-    uint8_t* MEM_If_Read_FS(uint8_t *src, uint8_t *dest, uint32_t Len);
+    uint8_t *MEM_If_Read_FS(uint8_t *src, uint8_t *dest, uint32_t Len);
     uint16_t MEM_If_DeInit_FS(void);
     uint16_t MEM_If_GetStatus_FS(uint32_t Add, uint8_t Cmd, uint8_t *buffer);
 
     __ALIGN_BEGIN USBD_DFU_MediaTypeDef USBD_DFU_fops_FS __ALIGN_END =
-    {
-        (uint8_t*)FLASH_INT_STR,
-        MEM_If_Init_FS,
-        MEM_If_DeInit_FS,
-        MEM_If_Erase_FS,
-        MEM_If_Write_FS,
-        MEM_If_Read_FS,
-        MEM_If_GetStatus_FS
-    };
+        {
+            (uint8_t *)FLASH_INT_STR,
+            MEM_If_Init_FS,
+            MEM_If_DeInit_FS,
+            MEM_If_Erase_FS,
+            MEM_If_Write_FS,
+            MEM_If_Read_FS,
+            MEM_If_GetStatus_FS};
 
     /**
      * @brief  Memory initialization routine.
@@ -265,7 +256,7 @@ extern "C"
     uint8_t *MEM_If_Read_FS(uint8_t *src, uint8_t *dest, uint32_t Len)
     {
         /* Return a valid address to avoid HardFault */
-        return (uint8_t*) dfu_impl.MemoryRead(src, dest, Len);
+        return (uint8_t *)dfu_impl.MemoryRead(src, dest, Len);
     }
 
     /**
@@ -287,23 +278,13 @@ extern "C"
 }
 
 /////////////////////////////////////////////////
-// DFUHandle::Impl -> DFUHandle                 
+// DFUHandle::Impl -> DFUHandle
 /////////////////////////////////////////////////
 
-DFUHandle::Result DFUHandle::Init(DaisySeed* seed)
+DFUHandle::Result DFUHandle::Init(QSPIHandle* qspi)
 {
-    state_ = State::WAITING_ON_TIMEOUT;
-    timeout_start_ = System::GetNow();
-
-    dsy_gpio_pin button{dsy_gpio_port::DSY_GPIOG, 3};
-    boot_button_.Init(button, 1000, Switch::TYPE_MOMENTARY, Switch::POLARITY_NORMAL, Switch::PULL_NONE);
-
-    pwm_tick_ = timeout_start_;
-    angle_ = 0;
-
-    hw_ = seed;
     pimpl_ = &dfu_impl;
-    return pimpl_->Init(seed);
+    return pimpl_->Init(qspi);
 }
 
 DFUHandle::Result DFUHandle::DeInit()
@@ -311,46 +292,14 @@ DFUHandle::Result DFUHandle::DeInit()
     return pimpl_->DeInit();
 }
 
-bool DFUHandle::PollJump(bool delay_timeout)
+bool DFUHandle::GetDfuComplete()
 {
-    // Prevents a jump during DFU download
-    if (pimpl_->dfu_initiated)
-        state_ = State::WAITING_ON_DFU;
-
-    boot_button_.Debounce();
-    if (boot_button_.RisingEdge())
-    {
-        state_ = State::WAITING_ON_DFU;
-        HappyBlink();
-    }
-
-    bool timeout_elapsed = System::GetNow() - timeout_start_ > timeout_;
-    if (pimpl_->dfu_complete || (timeout_elapsed && state_ == State::WAITING_ON_TIMEOUT && !delay_timeout))
-    {
-        // If this method is called again, then the program failed to load, meaning
-        // there's likely no program in flash
-        state_ = State::WAITING_ON_DFU;
-        return true;
-    }
-
-    return false;
+    return pimpl_->dfu_complete;
 }
 
-bool DFUHandle::GetDfuComplete() 
-{ 
-    return pimpl_->dfu_complete; 
-}
-
-void DFUHandle::HappyBlink()
+bool DFUHandle::GetDfuInitiated()
 {
-    unsigned int time = 50;
-    for (int i = 0; i < 2; i++)
-    {
-        hw_->SetLed(true);
-        System::Delay(time);
-        hw_->SetLed(false);
-        System::Delay(time);
-    }
+    return pimpl_->dfu_initiated;
 }
 
 // IRQ Handler
@@ -366,8 +315,8 @@ extern "C"
         HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
     }
 
-    void OTG_FS_IRQHandler(void) 
-    { 
-        HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS); 
+    void OTG_FS_IRQHandler(void)
+    {
+        HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
     }
 }

@@ -3,37 +3,9 @@ TARGET = main
 
 # Sources
 CPP_SOURCES = main.cpp \
-src/bootloader.cpp \
-src/dfu.cpp \
-src/fatloader.cpp
-
-# src/msd.cpp
-
-# C_SOURCES += \
-# src/fatfs/fatfs_usbh.c \
-# src/fatfs/usbh_diskio.c
-
-# C_SOURCES += \
-# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_bot.c \
-# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_scsi.c \
-# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc.c \
-# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_core.c \
-# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ctlreq.c \
-# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ioreq.c \
-# ../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_pipes.c
-
-# ../cube_dfu/USB_HOST/Target/usbh_conf.c 
+$(wildcard src/*.cpp)
 
 USE_FATFS = 1
-
-# C_SOURCES += \
-# ../cube_dfu/FATFS/App/fatfs.c
-
-# C_SOURCES += \
-# ../cube_dfu/Middlewares/Third_Party/FatFS/src/diskio.c \
-# ../cube_dfu/Middlewares/Third_Party/FatFS/src/ff_gen_drv.c \
-# ../cube_dfu/Middlewares/Third_Party/FatFS/src/ff.c  \
-# ../cube_dfu/FATFS/App/fatfs.c
 
 C_INCLUDES = -Isrc
 
@@ -45,13 +17,6 @@ C_INCLUDES += \
 -I. \
 -I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc \
 -I../cube_dfu/USB_DEVICE/App 
-
-# -Isrc/fatfs
-# -I../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc
-# -I../cube_dfu/Middlewares/ST/STM32_USB_Host_Library/Core/Inc
-# -I../cube_dfu/USB_HOST/Target
-
-# -I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/Inc 
 
 LDSCRIPT = boot_linker.lds
 

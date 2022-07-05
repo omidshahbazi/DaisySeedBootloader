@@ -1,5 +1,18 @@
 # Changelog
 
+## v5.4.0
+* USB detection time increased by around 1 second
+* Logical flow has been simplified
+
+## v5.3.0
+* Adjusts state machine to check SD and USB sources in a loop, meaning they're now hot-pluggable and should also be more reliable
+
+## v5.1.0
+* Error LED gives blink sequence related to error instead of SOS
+* Improved LED and button responsiveness
+* Refactored code for clearer structure and improved extensibility
+* Reverted PID
+
 ## v5.0.0
 * Added transaction logging for FatFS interactions
 * FatFS interactions will only overwrite QSPI if the program is different from the one stored
