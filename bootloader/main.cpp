@@ -18,20 +18,22 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 	boot.AudioProcess(in, out, size);
 }
 
-int main(void)
-{
+int main(void) {
+
+	uint32_t timeout_ms = startup_process();
+
 	hw.Configure();
 	hw.Init(true);
 
 	SCB_DisableDCache();
 
-	boot.Init(hw);
+	boot.Init(hw, timeout_ms);
 
 	hw.StartAudio(AudioCallback);
 
 	boot.IoInit();
 
-	while(1) 
+	while(1)
 	{
 		boot.LoopProcess();
 	}
