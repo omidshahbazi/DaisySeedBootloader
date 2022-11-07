@@ -22,9 +22,10 @@ MEMORY
 	RAM_D2_DMA (RWX)   : ORIGIN = 0x30000000, LENGTH = 32K
 	RAM_D2 (RWX)       : ORIGIN = 0x30008000, LENGTH = 256K
 	RAM_D3 (RWX)       : ORIGIN = 0x38000000, LENGTH = 64K
+	BACKUP_SRAM (RWX)  : ORIGIN = 0x38800000, LENGTH = 4K
 	ITCMRAM_EXEC (RWX) : ORIGIN = 0x00000000, LENGTH = 64K
 	SDRAM (RWX)        : ORIGIN = 0xc0000000, LENGTH = 64M
-  QSPIFLASH (RX)     : ORIGIN = 0x90040000, LENGTH = 7936K
+	QSPIFLASH (RX)     : ORIGIN = 0x90040000, LENGTH = 7936K
 }
 
 _estack = 0x20020000;
@@ -147,7 +148,7 @@ SECTIONS
 		PROVIDE(__bss_end__ = _ebss);
 	} > SRAM_SPARE
 
-	PROVIDE(end = .); 
+	PROVIDE(end = .);
 
   .itcmram_exec (NOLOAD) :
 	{
@@ -223,6 +224,19 @@ SECTIONS
 		PROVIDE(__sdram_bss_end = _esdram_bss);
 	} > SDRAM
 
+	.backup_sram (NOLOAD) :
+	{
+		. = ALIGN(4);
+		_sbackup_sram = .;
+
+		PROVIDE(__backup_sram_start = _sbackup_sram);
+		*(.backup_sram)
+		*(.backup_sram*)
+		. = ALIGN(4);
+		_ebackup_sram = .;
+
+		PROVIDE(__backup_sram_end = _ebackup_sram);
+	} > BACKUP_SRAM
 
     .qspiflash_text :
 	{

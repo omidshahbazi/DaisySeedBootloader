@@ -12,6 +12,58 @@
 
 using namespace daisy;
 
+uint32_t daisy::startup_process()
+{
+  // Enable backup SRAM
+  System::InitBackupSram();
+
+  // Write the bootloader version
+  boot_info.version = System::BootInfo::Version::v6_0;
+
+	if (boot_info.status == System::BootInfo::Type::JUMP)
+	{
+		boot_info.status = System::BootInfo::Type::INVALID;
+		// Do jump
+		typedef void _Noreturn (*EntryPoint)(void);
+
+    auto memory = System::GetMemoryRegion(boot_info.data);
+
+    if (memory == System::MemoryRegion::QSPI)
+    {
+      QSPIHandle::Config qspi_config;
+
+      qspi_config.device = QSPIHandle::Config::Device::IS25LP064A;
+      qspi_config.mode   = QSPIHandle::Config::Mode::MEMORY_MAPPED;
+
+      qspi_config.pin_config.io0 = Pin(PORTF, 8);
+      qspi_config.pin_config.io1 = Pin(PORTF, 9);
+      qspi_config.pin_config.io2 = Pin(PORTF, 7);
+      qspi_config.pin_config.io3 = Pin(PORTF, 6);
+      qspi_config.pin_config.clk = Pin(PORTF, 10);
+      qspi_config.pin_config.ncs = Pin(PORTG, 6);
+
+      QSPIHandle qspi;
+
+      qspi.Init(qspi_config);
+    }
+
+		volatile uint32_t application_address = *(volatile uint32_t*) (boot_info.data + 4);
+		EntryPoint application = (EntryPoint)(application_address);
+		SCB->VTOR = boot_info.data;
+		__set_MSP(*((volatile uint32_t*) boot_info.data));
+		application();
+	}
+
+	if (boot_info.status == System::BootInfo::Type::SKIP_TIMEOUT)
+	{
+		boot_info.status = System::BootInfo::Type::INVALID;
+		// do the regular startup, but skip the timeout
+    return 100;
+	}
+
+  return 2000;
+}
+
 uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
 // uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE / 2];
 uint8_t DSY_SRAM_EXEC sram_program[SRAM_SPACE - 32768];
@@ -19,9 +71,10 @@ uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
 static constexpr uint32_t INVALID_ADDRESS = 0xFFFFFFFF;
 
-Bootloader::Result Bootloader::Init(DaisySeed &seed)
+Bootloader::Result Bootloader::Init(DaisySeed &seed, uint32_t timeout)
 {
   timeout_start_ = System::GetNow();
+  timeout_ = timeout;
   pwm_tick_ = timeout_start_;
   angle_ = -M_PI / 4; // LED will start at 0 like this
 
@@ -50,12 +103,12 @@ Bootloader::Result Bootloader::Init(DaisySeed &seed)
   downloading_binary_ = false;
 
   state_ = State::CHECK_SD;
-  
+
   return Result::OK;
 }
 
 Bootloader::Result Bootloader::IoInit()
-{ 
+{
   InitDFU();
 
   // SD interface init
@@ -81,7 +134,7 @@ Bootloader::Result Bootloader::InitDFU()
     dfu_initialized_ = true;
     return (Result) dfu.Init(&hw_->qspi);
   }
-  
+
   return Result::OK;
 }
 
@@ -92,7 +145,7 @@ Bootloader::Result Bootloader::DeinitDFU()
     dfu_initialized_ = false;
     return (Result) dfu.DeInit();
   }
-    
+
   return Result::OK;
 }
 
@@ -146,6 +199,9 @@ uint32_t Bootloader::FillTargetMemory()
 
 void Bootloader::LoadProgramAndJump(uint8_t error_code)
 {
+  // Deinitialize the fatfs related peripherals
+  DeinitFatfs();
+
   // If the stack pointer isn't here, then either the
   // download failed or was invalid, or a program
   // has never been written to flash
@@ -165,24 +221,30 @@ void Bootloader::LoadProgramAndJump(uint8_t error_code)
     TriggerError(error_code);
     return;
   }
-    
+
   DeInit();
 
-  // disable interupts NOTE -- These two seem to cause
-  // errors for the target application
-  // __set_PRIMASK(1);
-  // __disable_irq();
-  RCC->CIER = 0x00000000;
+  // // disable interupts NOTE -- These two seem to cause
+  // // errors for the target application
+  // // __set_PRIMASK(1);
+  // // __disable_irq();
+  // RCC->CIER = 0x00000000;
 
-  hw_->SetLed(false);
+  // hw_->SetLed(false);
 
-  typedef void _Noreturn (*EntryPoint)(void);
+  // typedef void _Noreturn (*EntryPoint)(void);
 
-  volatile uint32_t application_address = *(__IO uint32_t *)(program_start + 4);
-  EntryPoint application = (EntryPoint)(application_address);
-  SCB->VTOR = program_start;
-  __set_MSP(*(__IO uint32_t *)program_start);
-  application();
+  // volatile uint32_t application_address = *(__IO uint32_t *)(program_start + 4);
+  // EntryPoint application = (EntryPoint)(application_address);
+  // SCB->VTOR = program_start;
+  // __set_MSP(*(__IO uint32_t *)program_start);
+  // application();
+
+  boot_info.status = System::BootInfo::Type::JUMP;
+  boot_info.data = program_start;
+
+  HAL_NVIC_SystemReset();
+  while (1);
 }
 
 void Bootloader::ManageLed()
@@ -296,7 +358,6 @@ void Bootloader::LoopProcess()
       }
       else if (res == FatfsResult::PRESENT)
       {
-        DeinitFatfs();
         LoadProgramAndJump(4);
         // If we got here without restarting, the loading encountered an error
         state_ = next_state;
@@ -342,7 +403,6 @@ void Bootloader::LoopProcess()
       }
       else if (res == FatfsResult::PRESENT)
       {
-        DeinitFatfs();
         LoadProgramAndJump(6);
 
         state_ = next_state;
@@ -364,7 +424,6 @@ void Bootloader::LoopProcess()
 
       if (dfu_done)
       {
-        DeinitFatfs();
         LoadProgramAndJump(7);
 
         DeinitDFU();
@@ -381,7 +440,6 @@ void Bootloader::LoopProcess()
 
       if (timeout_elapsed && !do_error_ && !boot_button_pressed_ && !dfu_ongoing)
       {
-        DeinitFatfs();
         LoadProgramAndJump(8);
       }
 

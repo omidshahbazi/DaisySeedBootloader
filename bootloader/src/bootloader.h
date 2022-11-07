@@ -57,7 +57,7 @@ class Bootloader
      *
      *  \param seed Pointer to initialized seed hardware class
      */
-    Result Init(DaisySeed &seed);
+    Result Init(DaisySeed &seed, uint32_t timeout);
 
     /** A separate initialization for IO that takes some time.
      *  Should be called after Init and before any LoopProcess calls.
@@ -170,11 +170,16 @@ class Bootloader
     float angle_;
     uint32_t pwm_tick_;
 
-    static constexpr uint32_t timeout_ = 2000; // 2 seconds
+    uint32_t timeout_ = 2000; // 2 seconds
     uint32_t timeout_start_;
 };
 
 /** @} */
+
+/** This function handles the bootloader startup before any other initialization
+ * \returns Timeout length
+*/
+uint32_t startup_process();
 
 } // namespace daisy
 
