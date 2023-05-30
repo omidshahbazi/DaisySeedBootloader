@@ -18,7 +18,7 @@ uint32_t daisy::startup_process()
   System::InitBackupSram();
 
   // Write the bootloader version
-  boot_info.version = System::BootInfo::Version::v6_0;
+  boot_info.version = System::BootInfo::Version::v6_1;
 
 	if (boot_info.status == System::BootInfo::Type::JUMP)
 	{
@@ -114,6 +114,8 @@ Bootloader::Result Bootloader::IoInit()
   // SD interface init
   SdmmcHandler::Config sd_cfg;
   sd_cfg.Defaults();
+  sd_cfg.speed = SdmmcHandler::Speed::MEDIUM_SLOW;
+  sd_cfg.width = SdmmcHandler::BusWidth::BITS_1;
   sd_.Init(sd_cfg);
   sd_skip_ = false;
 

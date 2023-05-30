@@ -1,11 +1,14 @@
 # Changelog
 
+## v6.1.0
+* Reduced the speed and bits of the SDMMC peripheral to 1 bit at 12.5 MHz
+
 ## v6.0.0
-- Restructured the bootloader to offer a perfectly clean slate for the application it jumps to
-  - This fixes any issues related to pins not functioning as expected when using the bootloader
-- Added the ability to libDaisy for returning to the Daisy bootloader
-  - This includes an additional option for (mostly) skipping the timeout period
-- \>=v6 will not be compatible with applications that were compiled with libDaisy <=v5.2
+* Restructured the bootloader to offer a perfectly clean slate for the application it jumps to
+  * This fixes any issues related to pins not functioning as expected when using the bootloader
+* Added the ability to libDaisy for returning to the Daisy bootloader
+  * This includes an additional option for (mostly) skipping the timeout period
+* \>=v6 will not be compatible with applications that were compiled with libDaisy <=v5.2
 
 ## v5.4.0
 * USB detection time increased by around 1 second
