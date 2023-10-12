@@ -702,5 +702,7 @@ Bootloader::FatfsResult Bootloader::SearchBin()
 void Bootloader::DeinitFatfs()
 {
   // TODO -- add sd deinit
+#if !DSY_DFU_USE_EXT_USB
   msd_.Deinit();
+#endif
 }
