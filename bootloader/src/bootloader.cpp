@@ -119,12 +119,16 @@ Bootloader::Result Bootloader::IoInit()
   sd_.Init(sd_cfg);
   sd_skip_ = false;
 
-  // USB interface init
+//  USB interface init
+#if !DSY_DFU_USE_EXT_USB
   USBHostHandle::Config config;
   msd_.Init(config);
   usb_skip_ = false;
-
   fsi_.Init(FatFSInterface::Config::MEDIA_USB | FatFSInterface::Config::MEDIA_SD);
+#else
+  fsi_.Init(FatFSInterface::Config::MEDIA_SD);
+#endif
+
 
   return Result::OK;
 }
@@ -338,7 +342,12 @@ void Bootloader::LoopProcess()
   {
     case State::CHECK_SD:
     {
+#if DSY_DFU_USE_EXT_USB
+      // if using external USB for DFU, skip USB mass storage check
+      const State next_state = State::CHECK_DFU;
+#else
       const State next_state = State::CHECK_USB;
+#endif
       if (sd_skip_)
       {
         state_ = next_state;

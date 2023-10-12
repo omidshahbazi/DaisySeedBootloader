@@ -28,7 +28,8 @@
       "defines": [
         "_DEBUG",
         "UNICODE",
-        "_UNICODE"
+        "_UNICODE",
+        "DSY_DFU_USE_EXT_USB=1"
       ],
       "includePath": [
         "${workspaceFolder}/**",

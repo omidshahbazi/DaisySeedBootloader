@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "usbd_dfu.h": "c"
+        "usbd_dfu.h": "c",
+        "cstdint": "cpp"
     }
 }

@@ -13,8 +13,6 @@ using namespace daisy;
 
 #define DSY_DTCMRAM_BSS __attribute__((section(".dtcmram_bss")))
 
-#define DSY_DFU_USE_EXT_USB 0
-
 extern "C"
 {
     USBD_HandleTypeDef hUsbDeviceFS;
@@ -58,14 +56,17 @@ DFUHandle::Impl dfu_impl;
 
 DFUHandle::Result DFUHandle::Impl::Init(QSPIHandle* qspi)
 {
-    uint8_t *clear_ptr = (uint8_t *)&hUsbDeviceFS;
-    for (size_t i = 0; i < sizeof(USBD_HandleTypeDef); i++)
-        *clear_ptr++ = 0;
 
 #if DSY_DFU_USE_EXT_USB
+    uint8_t *clear_ptr = (uint8_t *)&hUsbDeviceHS;
+    for (size_t i = 0; i < sizeof(USBD_HandleTypeDef); i++)
+        *clear_ptr++ = 0;
     if (USBInit_HS() != Result::OK)
         return Result::ERR;
 #else
+    uint8_t *clear_ptr = (uint8_t *)&hUsbDeviceFS;
+    for (size_t i = 0; i < sizeof(USBD_HandleTypeDef); i++)
+        *clear_ptr++ = 0;
     if (USBInit_FS() != Result::OK)
         return Result::ERR;
 #endif
