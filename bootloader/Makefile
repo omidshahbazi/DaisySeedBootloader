@@ -9,6 +9,8 @@ USE_FATFS = 1
 
 # Modification flag for using external USB port as DFU
 C_DEFS += -DDSY_DFU_USE_EXT_USB=1
+# Modify default boot timeout
+C_DEFS += -DDSY_BOOT_TIMEOUT_MS=200
 
 C_INCLUDES = -Isrc
 

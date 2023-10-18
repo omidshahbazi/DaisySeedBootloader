@@ -12,6 +12,10 @@
 
 using namespace daisy;
 
+#ifndef DSY_BOOT_TIMEOUT_MS
+  #define DSY_BOOT_TIMEOUT_MS 2000
+#endif
+
 uint32_t daisy::startup_process()
 {
   // Enable backup SRAM
@@ -61,7 +65,7 @@ uint32_t daisy::startup_process()
     return 100;
 	}
 
-  return 2000;
+  return DSY_BOOT_TIMEOUT_MS;
 }
 
 uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
