@@ -63,7 +63,12 @@ uint32_t daisy::startup_process()
 		boot_info.status = System::BootInfo::Type::INVALID;
 		// do the regular startup, but skip the timeout
     return 100;
-	}
+	} else if (boot_info.status == System::BootInfo::Type::INF_TIMEOUT)
+  {
+		boot_info.status = System::BootInfo::Type::INVALID;
+		// do startup permanently into boot/DFU mode (uint32_t max milliseconds, or 1000+ hours)
+    return UINT32_MAX;
+  }
 
   return DSY_BOOT_TIMEOUT_MS;
 }
