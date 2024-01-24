@@ -12,6 +12,10 @@
 
 using namespace daisy;
 
+#ifndef DSY_BOOT_TIMEOUT_MS
+  #define DSY_BOOT_TIMEOUT_MS 2000
+#endif
+
 uint32_t daisy::startup_process()
 {
   // Enable backup SRAM
@@ -59,9 +63,14 @@ uint32_t daisy::startup_process()
 		boot_info.status = System::BootInfo::Type::INVALID;
 		// do the regular startup, but skip the timeout
     return 100;
-	}
+	} else if (boot_info.status == System::BootInfo::Type::INF_TIMEOUT)
+  {
+		boot_info.status = System::BootInfo::Type::INVALID;
+		// do startup permanently into boot/DFU mode (uint32_t max milliseconds, or 1000+ hours)
+    return UINT32_MAX;
+  }
 
-  return 2000;
+  return DSY_BOOT_TIMEOUT_MS;
 }
 
 uint8_t DSY_QSPI_BSS qspi_buffer[PROGRAM_SPACE];
@@ -119,12 +128,16 @@ Bootloader::Result Bootloader::IoInit()
   sd_.Init(sd_cfg);
   sd_skip_ = false;
 
-  // USB interface init
+//  USB interface init
+#if !DSY_DFU_USE_EXT_USB
   USBHostHandle::Config config;
   msd_.Init(config);
   usb_skip_ = false;
-
   fsi_.Init(FatFSInterface::Config::MEDIA_USB | FatFSInterface::Config::MEDIA_SD);
+#else
+  fsi_.Init(FatFSInterface::Config::MEDIA_SD);
+#endif
+
 
   return Result::OK;
 }
@@ -338,7 +351,12 @@ void Bootloader::LoopProcess()
   {
     case State::CHECK_SD:
     {
+#if DSY_DFU_USE_EXT_USB
+      // if using external USB for DFU, skip USB mass storage check
+      const State next_state = State::CHECK_DFU;
+#else
       const State next_state = State::CHECK_USB;
+#endif
       if (sd_skip_)
       {
         state_ = next_state;
@@ -693,5 +711,7 @@ Bootloader::FatfsResult Bootloader::SearchBin()
 void Bootloader::DeinitFatfs()
 {
   // TODO -- add sd deinit
+#if !DSY_DFU_USE_EXT_USB
   msd_.Deinit();
+#endif
 }

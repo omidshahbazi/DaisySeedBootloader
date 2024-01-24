@@ -16,7 +16,9 @@ using namespace daisy;
 extern "C"
 {
     USBD_HandleTypeDef hUsbDeviceFS;
+    USBD_HandleTypeDef hUsbDeviceHS;
     extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+    extern PCD_HandleTypeDef hpcd_USB_OTG_HS;
     void enable_jump();
 }
 
@@ -34,6 +36,8 @@ public:
     Result MemoryWrite(uint8_t *src, uint8_t *dest, uint32_t Len);
     Result MemoryRead(uint8_t *src, uint8_t *dest, uint32_t Len);
     Result MemoryStatus(uint32_t Add, uint8_t Cmd, uint8_t *buffer);
+    Result USBInit_FS();
+    Result USBInit_HS();
     Result DeInit();
 
     bool dfu_complete;
@@ -52,27 +56,21 @@ DFUHandle::Impl dfu_impl;
 
 DFUHandle::Result DFUHandle::Impl::Init(QSPIHandle* qspi)
 {
+
+#if DSY_DFU_USE_EXT_USB
+    uint8_t *clear_ptr = (uint8_t *)&hUsbDeviceHS;
+    for (size_t i = 0; i < sizeof(USBD_HandleTypeDef); i++)
+        *clear_ptr++ = 0;
+    if (USBInit_HS() != Result::OK)
+        return Result::ERR;
+#else
     uint8_t *clear_ptr = (uint8_t *)&hUsbDeviceFS;
     for (size_t i = 0; i < sizeof(USBD_HandleTypeDef); i++)
         *clear_ptr++ = 0;
+    if (USBInit_FS() != Result::OK)
+        return Result::ERR;
+#endif
 
-    if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
-    {
-        return Result::ERR;
-    }
-    if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_DFU) != USBD_OK)
-    {
-        return Result::ERR;
-    }
-    // hUsbDeviceFS.pClass = &USBD_DFU;
-    if (USBD_DFU_RegisterMedia(&hUsbDeviceFS, &USBD_DFU_fops_FS) != USBD_OK)
-    {
-        return Result::ERR;
-    }
-    if (USBD_Start(&hUsbDeviceFS) != USBD_OK)
-    {
-        return Result::ERR;
-    }
     HAL_PWREx_EnableUSBVoltageDetector();
 
     data_written_ = 0;
@@ -86,8 +84,13 @@ DFUHandle::Result DFUHandle::Impl::Init(QSPIHandle* qspi)
 
 DFUHandle::Result DFUHandle::Impl::DeInit()
 {
+#if DSY_DFU_USE_EXT_USB
+    if (USBD_DeInit(&hUsbDeviceHS) != USBD_OK)
+        return Result::ERR;
+#else
     if (USBD_DeInit(&hUsbDeviceFS) != USBD_OK)
         return Result::ERR;
+#endif
     // HAL_PWREx_DisableUSBVoltageDetector();
 
     // TODO -- create mechanism to ensure the
@@ -176,6 +179,50 @@ DFUHandle::Result DFUHandle::Impl::MemoryStatus(uint32_t Add, uint8_t Cmd, uint8
         buffer[4] = 4;   // bState (4 = dfuDNBUSY)
         buffer[5] = 0;   // no state string
         break;
+    }
+    return Result::OK;
+}
+
+DFUHandle::Result DFUHandle::Impl::USBInit_FS()
+{
+    if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
+    {
+        return Result::ERR;
+    }
+    if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_DFU) != USBD_OK)
+    {
+        return Result::ERR;
+    }
+    // hUsbDeviceFS.pClass = &USBD_DFU;
+    if (USBD_DFU_RegisterMedia(&hUsbDeviceFS, &USBD_DFU_fops_FS) != USBD_OK)
+    {
+        return Result::ERR;
+    }
+    if (USBD_Start(&hUsbDeviceFS) != USBD_OK)
+    {
+        return Result::ERR;
+    }
+    return Result::OK;
+}
+
+DFUHandle::Result DFUHandle::Impl::USBInit_HS()
+{
+    if(USBD_Init(&hUsbDeviceHS, &HS_Desc, DEVICE_HS) != USBD_OK)
+    {
+        return Result::ERR;
+    }
+    if(USBD_RegisterClass(&hUsbDeviceHS, &USBD_DFU) != USBD_OK)
+    {
+        return Result::ERR;
+    }
+    // the flash media operations callbacks are the same for HS/FS
+    if(USBD_DFU_RegisterMedia(&hUsbDeviceHS, &USBD_DFU_fops_FS) != USBD_OK)
+    {
+        return Result::ERR;
+    }
+    if(USBD_Start(&hUsbDeviceHS) != USBD_OK)
+    {
+        return Result::ERR;
     }
     return Result::OK;
 }

@@ -7,16 +7,21 @@ $(wildcard src/*.cpp)
 
 USE_FATFS = 1
 
+# Modification flag for using external USB port as DFU
+C_DEFS += -DDSY_DFU_USE_EXT_USB=1
+# Modify default boot timeout
+C_DEFS += -DDSY_BOOT_TIMEOUT_MS=200
+
 C_INCLUDES = -Isrc
 
 C_SOURCES += \
 ../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Src/usbd_dfu.c \
-../cube_dfu/USB_DEVICE/App/usbd_desc.c 
+../cube_dfu/USB_DEVICE/App/usbd_desc.c
 
 C_INCLUDES += \
 -I. \
 -I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc \
--I../cube_dfu/USB_DEVICE/App 
+-I../cube_dfu/USB_DEVICE/App
 
 LDSCRIPT = boot_linker.lds
 
