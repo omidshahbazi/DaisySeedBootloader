@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Project",
+            "type": "shell",
+            "command": "make clean && make",
+            "options": {
+                "cwd": "${workspaceFolder}/bootloader/"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Test App",
+            "type": "shell",
+            "command": "make clean && make",
+            "options": {
+                "cwd": "${workspaceFolder}/Blink/"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

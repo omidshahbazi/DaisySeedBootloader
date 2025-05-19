@@ -1,5 +1,13 @@
 # Changelog
 
+## v6.3.0
+
+* Implements the QSPI Stabilization required to recover from the intermittent seed issue where the QSPI can get itself into write protect mode.
+
+## v6.2.0
+
+* This version was identical to v6.1, but had variants manually generated for various timeouts and repurposing the secondary USB for DFU instead of MSC
+
 ## v6.1.0
 * Reduced the speed and bits of the SDMMC peripheral to 1 bit at 12.5 MHz
 

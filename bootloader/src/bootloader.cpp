@@ -13,7 +13,7 @@
 using namespace daisy;
 
 #ifndef DSY_BOOT_TIMEOUT_MS
-  #define DSY_BOOT_TIMEOUT_MS 2000
+#define DSY_BOOT_TIMEOUT_MS 2000
 #endif
 
 uint32_t daisy::startup_process()
@@ -24,20 +24,22 @@ uint32_t daisy::startup_process()
   // Write the bootloader version
   boot_info.version = System::BootInfo::Version::v6_1;
 
-	if (boot_info.status == System::BootInfo::Type::JUMP)
-	{
-		boot_info.status = System::BootInfo::Type::INVALID;
-		// Do jump
-		typedef void _Noreturn (*EntryPoint)(void);
+  if (boot_info.status == System::BootInfo::Type::JUMP)
+  {
+    boot_info.status = System::BootInfo::Type::INVALID;
+    // Do jump
+    typedef void _Noreturn (*EntryPoint)(void);
 
     auto memory = System::GetMemoryRegion(boot_info.data);
 
+    bool ready_to_jump = true;
     if (memory == System::MemoryRegion::QSPI)
     {
+      HAL_Init();
       QSPIHandle::Config qspi_config;
 
       qspi_config.device = QSPIHandle::Config::Device::IS25LP064A;
-      qspi_config.mode   = QSPIHandle::Config::Mode::MEMORY_MAPPED;
+      qspi_config.mode = QSPIHandle::Config::Mode::MEMORY_MAPPED;
 
       qspi_config.pin_config.io0 = Pin(PORTF, 8);
       qspi_config.pin_config.io1 = Pin(PORTF, 9);
@@ -47,26 +49,41 @@ uint32_t daisy::startup_process()
       qspi_config.pin_config.ncs = Pin(PORTG, 6);
 
       QSPIHandle qspi;
-
-      qspi.Init(qspi_config);
+      HAL_Delay(2);
+      if (qspi.Init(qspi_config) != QSPIHandle::Result::OK)
+      {
+        ready_to_jump = false;
+      }
     }
+    // If QSPI fails to initialize.. We're going to avoid the hard fault, and reset
+    if (ready_to_jump)
+    {
+      volatile uint32_t application_address = *(volatile uint32_t *)(boot_info.data + 4);
+      EntryPoint application = (EntryPoint)(application_address);
+      SCB->VTOR = boot_info.data;
+      __set_MSP(*((volatile uint32_t *)boot_info.data));
+      application();
+    }
+    else
+    {
+      // Not sure _what_ we wanna do here, but reset and recover..
+      boot_info.status = System::BootInfo::Type::INVALID;
+      boot_info.data = 0;
+      boot_info.version = System::BootInfo::Version::v6_1;
+      HAL_NVIC_SystemReset();
+    }
+  }
 
-		volatile uint32_t application_address = *(volatile uint32_t*) (boot_info.data + 4);
-		EntryPoint application = (EntryPoint)(application_address);
-		SCB->VTOR = boot_info.data;
-		__set_MSP(*((volatile uint32_t*) boot_info.data));
-		application();
-	}
-
-	if (boot_info.status == System::BootInfo::Type::SKIP_TIMEOUT)
-	{
-		boot_info.status = System::BootInfo::Type::INVALID;
-		// do the regular startup, but skip the timeout
-    return 100;
-	} else if (boot_info.status == System::BootInfo::Type::INF_TIMEOUT)
+  if (boot_info.status == System::BootInfo::Type::SKIP_TIMEOUT)
   {
-		boot_info.status = System::BootInfo::Type::INVALID;
-		// do startup permanently into boot/DFU mode (uint32_t max milliseconds, or 1000+ hours)
+    boot_info.status = System::BootInfo::Type::INVALID;
+    // do the regular startup, but skip the timeout
+    return 100;
+  }
+  else if (boot_info.status == System::BootInfo::Type::INF_TIMEOUT)
+  {
+    boot_info.status = System::BootInfo::Type::INVALID;
+    // do startup permanently into boot/DFU mode (uint32_t max milliseconds, or 1000+ hours)
     return UINT32_MAX;
   }
 
@@ -138,7 +155,6 @@ Bootloader::Result Bootloader::IoInit()
   fsi_.Init(FatFSInterface::Config::MEDIA_SD);
 #endif
 
-
   return Result::OK;
 }
 
@@ -147,7 +163,7 @@ Bootloader::Result Bootloader::InitDFU()
   if (!dfu_initialized_)
   {
     dfu_initialized_ = true;
-    return (Result) dfu.Init(&hw_->qspi);
+    return (Result)dfu.Init(&hw_->qspi);
   }
 
   return Result::OK;
@@ -158,7 +174,7 @@ Bootloader::Result Bootloader::DeinitDFU()
   if (dfu_initialized_)
   {
     dfu_initialized_ = false;
-    return (Result) dfu.DeInit();
+    return (Result)dfu.DeInit();
   }
 
   return Result::OK;
@@ -183,30 +199,30 @@ uint32_t Bootloader::FillTargetMemory()
 
   switch (mem)
   {
-    case System::SRAM_D1:
+  case System::SRAM_D1:
+  {
+    // sram_program = (uint8_t*) System::kSramStart;
+    for (size_t i = 0; i < sizeof(sram_program); i++)
     {
-      // sram_program = (uint8_t*) System::kSramStart;
-      for (size_t i = 0; i < sizeof(sram_program); i++)
-      {
-        sram_program[i] = qspi_buffer[i];
-      }
-      hw_->qspi.DeInit();
-      return (uint32_t)sram_program;
+      sram_program[i] = qspi_buffer[i];
     }
-    case System::QSPI:
-    {
-      // WARNING -- this will need to change with multi-programs
-      // (should be the beginning of the program, not the memory)
-      return QSPI_BASE + System::kQspiBootloaderOffset;
-    }
-    default:
-    {
-      // If we got here, then the stack address is valid, but the
-      // entry point is not, meaning the user should know their
-      // build isn't going to work
-      TriggerError(1);
-      return INVALID_ADDRESS;
-    }
+    hw_->qspi.DeInit();
+    return (uint32_t)sram_program;
+  }
+  case System::QSPI:
+  {
+    // WARNING -- this will need to change with multi-programs
+    // (should be the beginning of the program, not the memory)
+    return QSPI_BASE + System::kQspiBootloaderOffset;
+  }
+  default:
+  {
+    // If we got here, then the stack address is valid, but the
+    // entry point is not, meaning the user should know their
+    // build isn't going to work
+    TriggerError(1);
+    return INVALID_ADDRESS;
+  }
   }
 
   return INVALID_ADDRESS;
@@ -259,7 +275,8 @@ void Bootloader::LoadProgramAndJump(uint8_t error_code)
   boot_info.data = program_start;
 
   HAL_NVIC_SystemReset();
-  while (1);
+  while (1)
+    ;
 }
 
 void Bootloader::ManageLed()
@@ -349,123 +366,123 @@ void Bootloader::LoopProcess()
 {
   switch (state_)
   {
-    case State::CHECK_SD:
-    {
+  case State::CHECK_SD:
+  {
 #if DSY_DFU_USE_EXT_USB
-      // if using external USB for DFU, skip USB mass storage check
-      const State next_state = State::CHECK_DFU;
+    // if using external USB for DFU, skip USB mass storage check
+    const State next_state = State::CHECK_DFU;
 #else
-      const State next_state = State::CHECK_USB;
+    const State next_state = State::CHECK_USB;
 #endif
-      if (sd_skip_)
-      {
-        state_ = next_state;
-        break;
-      }
-
-      FatFS_Path_ = fsi_.GetSDPath();
-      FatFS_Obj_ = &fsi_.GetSDFileSystem();
-
-      FatfsResult res = SearchBin();
-
-      if (res == FatfsResult::ERROR)
-      {
-        // Either there was a .bin file with an invalid executable or
-        // a drive was present that failed to mount / open
-        TriggerError(3);
-        state_ = next_state;
-        sd_skip_ = true;
-      }
-      else if (res == FatfsResult::PRESENT)
-      {
-        LoadProgramAndJump(4);
-        // If we got here without restarting, the loading encountered an error
-        state_ = next_state;
-      }
-      else if (res == FatfsResult::ALREADY_LOADED)
-      {
-        state_ = next_state;
-        sd_skip_ = true;
-      }
-      else if (res == FatfsResult::ABSENT)
-      {
-        state_ = next_state;
-      }
-      break;
-    }
-    case State::CHECK_USB:
+    if (sd_skip_)
     {
-      const State next_state = State::CHECK_DFU;
-      if (usb_skip_)
-      {
-        state_ = next_state;
-        break;
-      }
-
-      FatFS_Path_ = fsi_.GetUSBPath();
-      FatFS_Obj_ = &fsi_.GetUSBFileSystem();
-
-      msd_.Process();
-
-      if (!msd_.GetReady())
-      {
-        state_ = next_state;
-        break;
-      }
-
-      FatfsResult res = SearchBin();
-
-      if (res == FatfsResult::ERROR)
-      {
-        TriggerError(5);
-        state_ = next_state;
-        usb_skip_ = true;
-      }
-      else if (res == FatfsResult::PRESENT)
-      {
-        LoadProgramAndJump(6);
-
-        state_ = next_state;
-      }
-      else if (res == FatfsResult::ALREADY_LOADED)
-      {
-        state_ = next_state;
-        usb_skip_ = true;
-      }
-      else if (res == FatfsResult::ABSENT)
-      {
-        state_ = next_state;
-      }
+      state_ = next_state;
       break;
     }
-    case State::CHECK_DFU:
+
+    FatFS_Path_ = fsi_.GetSDPath();
+    FatFS_Obj_ = &fsi_.GetSDFileSystem();
+
+    FatfsResult res = SearchBin();
+
+    if (res == FatfsResult::ERROR)
     {
-      bool dfu_done = dfu.GetDfuComplete();
-
-      if (dfu_done)
-      {
-        LoadProgramAndJump(7);
-
-        DeinitDFU();
-        InitDFU();
-        break;
-      }
-      state_ = State::CHECK_TIMEOUT;
-      break;
+      // Either there was a .bin file with an invalid executable or
+      // a drive was present that failed to mount / open
+      TriggerError(3);
+      state_ = next_state;
+      sd_skip_ = true;
     }
-    case State::CHECK_TIMEOUT:
+    else if (res == FatfsResult::PRESENT)
     {
-      bool timeout_elapsed = (System::GetNow() - timeout_start_ > timeout_);
-      bool dfu_ongoing = dfu.GetDfuInitiated();
-
-      if (timeout_elapsed && !do_error_ && !boot_button_pressed_ && !dfu_ongoing)
-      {
-        LoadProgramAndJump(8);
-      }
-
-      state_ = State::CHECK_SD;
+      LoadProgramAndJump(4);
+      // If we got here without restarting, the loading encountered an error
+      state_ = next_state;
+    }
+    else if (res == FatfsResult::ALREADY_LOADED)
+    {
+      state_ = next_state;
+      sd_skip_ = true;
+    }
+    else if (res == FatfsResult::ABSENT)
+    {
+      state_ = next_state;
+    }
+    break;
+  }
+  case State::CHECK_USB:
+  {
+    const State next_state = State::CHECK_DFU;
+    if (usb_skip_)
+    {
+      state_ = next_state;
       break;
     }
+
+    FatFS_Path_ = fsi_.GetUSBPath();
+    FatFS_Obj_ = &fsi_.GetUSBFileSystem();
+
+    msd_.Process();
+
+    if (!msd_.GetReady())
+    {
+      state_ = next_state;
+      break;
+    }
+
+    FatfsResult res = SearchBin();
+
+    if (res == FatfsResult::ERROR)
+    {
+      TriggerError(5);
+      state_ = next_state;
+      usb_skip_ = true;
+    }
+    else if (res == FatfsResult::PRESENT)
+    {
+      LoadProgramAndJump(6);
+
+      state_ = next_state;
+    }
+    else if (res == FatfsResult::ALREADY_LOADED)
+    {
+      state_ = next_state;
+      usb_skip_ = true;
+    }
+    else if (res == FatfsResult::ABSENT)
+    {
+      state_ = next_state;
+    }
+    break;
+  }
+  case State::CHECK_DFU:
+  {
+    bool dfu_done = dfu.GetDfuComplete();
+
+    if (dfu_done)
+    {
+      LoadProgramAndJump(7);
+
+      DeinitDFU();
+      InitDFU();
+      break;
+    }
+    state_ = State::CHECK_TIMEOUT;
+    break;
+  }
+  case State::CHECK_TIMEOUT:
+  {
+    bool timeout_elapsed = (System::GetNow() - timeout_start_ > timeout_);
+    bool dfu_ongoing = dfu.GetDfuInitiated();
+
+    if (timeout_elapsed && !do_error_ && !boot_button_pressed_ && !dfu_ongoing)
+    {
+      LoadProgramAndJump(8);
+    }
+
+    state_ = State::CHECK_SD;
+    break;
+  }
   }
 }
 
@@ -501,12 +518,12 @@ void Bootloader::UpdateLog(bool success, const char *attempted_file, uint32_t ad
 
     if (success)
     {
-      data_to_write = sprintf((char*) sram_program,
+      data_to_write = sprintf((char *)sram_program,
                               "%d. Successfully flashed file \"%s\" to address 0x%08lX\n", log_number, attempted_file, address);
     }
     else
     {
-      data_to_write = sprintf((char*) sram_program,
+      data_to_write = sprintf((char *)sram_program,
                               "%d. Encountered error when attempting to flash \"%s\" to address 0x%08lX: %s\n", log_number, attempted_file, address, message);
     }
 
