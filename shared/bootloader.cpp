@@ -16,7 +16,7 @@ using namespace daisy;
 #define DSY_BOOT_TIMEOUT_MS 2000
 #endif
 
-uint32_t daisy::startup_process()
+uint32_t daisy::startup_process(QSPIHandle::Config* ext_qspi_cfg)
 {
   // Enable backup SRAM
   System::InitBackupSram();
@@ -41,12 +41,17 @@ uint32_t daisy::startup_process()
       qspi_config.device = QSPIHandle::Config::Device::IS25LP064A;
       qspi_config.mode = QSPIHandle::Config::Mode::MEMORY_MAPPED;
 
-      qspi_config.pin_config.io0 = Pin(PORTF, 8);
-      qspi_config.pin_config.io1 = Pin(PORTF, 9);
-      qspi_config.pin_config.io2 = Pin(PORTF, 7);
-      qspi_config.pin_config.io3 = Pin(PORTF, 6);
-      qspi_config.pin_config.clk = Pin(PORTF, 10);
-      qspi_config.pin_config.ncs = Pin(PORTG, 6);
+      // TODO: FIX THIS TO USE Correct Pinout based on qspi_->GetConfig()
+      if (ext_qspi_cfg) {
+        qspi_config.pin_config = ext_qspi_cfg->pin_config;
+      } else {
+        qspi_config.pin_config.io0 = Pin(PORTF, 8);
+        qspi_config.pin_config.io1 = Pin(PORTF, 9);
+        qspi_config.pin_config.io2 = Pin(PORTF, 7);
+        qspi_config.pin_config.io3 = Pin(PORTF, 6);
+        qspi_config.pin_config.clk = Pin(PORTF, 10);
+        qspi_config.pin_config.ncs = Pin(PORTG, 6);
+      }
 
       QSPIHandle qspi;
       HAL_Delay(2);
@@ -97,14 +102,25 @@ uint8_t DSY_ITCMRAM_EXEC itcmram_program[ITCMRAM_SPACE];
 
 static constexpr uint32_t INVALID_ADDRESS = 0xFFFFFFFF;
 
-Bootloader::Result Bootloader::Init(DaisySeed &seed, uint32_t timeout)
+// Bootloader::Result Bootloader::Init(DaisySeed &seed, uint32_t timeout)
+Bootloader::Result Bootloader::Init(QSPIHandle& qspi, Pin led_pin, Pin btn_pin, uint32_t timeout, deinit_cb_t deinit_cb, void* deinit_context)
 {
   timeout_start_ = System::GetNow();
   timeout_ = timeout;
   pwm_tick_ = timeout_start_;
   angle_ = -M_PI / 4; // LED will start at 0 like this
 
-  hw_ = &seed;
+  // hw_ = &seed;
+  qspi_ = &qspi;
+  // store optional deinit callback/context
+  deinit_cb_ = deinit_cb;
+  deinit_context_ = deinit_context;
+  if (led_pin.IsValid()) {
+    led_.Init(led_pin, GPIO::Mode::OUTPUT);
+    has_led_ = true;
+  } else {
+    has_led_ = false;
+  }
 
   // Zero fill the first few addresses to avoid reinit bugs
   for (size_t i = 0; i < 32; i++)
@@ -122,8 +138,13 @@ Bootloader::Result Bootloader::Init(DaisySeed &seed, uint32_t timeout)
   happy_step_ = 0;
   happy_tick_ = 0;
 
-  dsy_gpio_pin button{dsy_gpio_port::DSY_GPIOG, 3};
-  boot_button_.Init(button, 1000, Switch::TYPE_MOMENTARY, Switch::POLARITY_NORMAL, Switch::PULL_NONE);
+  // dsy_gpio_pin button{dsy_gpio_port::DSY_GPIOG, 3};
+  if (btn_pin.IsValid()) {
+    boot_button_.Init(btn_pin);
+  } else {
+    dsy_gpio_pin button{dsy_gpio_port::DSY_GPIOG, 3};
+    boot_button_.Init(button, 1000, Switch::TYPE_MOMENTARY, Switch::POLARITY_NORMAL, Switch::PULL_NONE);
+  }
 
   boot_button_pressed_ = false;
   downloading_binary_ = false;
@@ -163,7 +184,8 @@ Bootloader::Result Bootloader::InitDFU()
   if (!dfu_initialized_)
   {
     dfu_initialized_ = true;
-    return (Result)dfu.Init(&hw_->qspi);
+    // return (Result)dfu.Init(&hw_->qspi);
+    return (Result)dfu.Init(qspi_);
   }
 
   return Result::OK;
@@ -185,8 +207,12 @@ Bootloader::Result Bootloader::DeInit()
   DeinitDFU();
   HAL_PWREx_DisableUSBVoltageDetector();
 
-  hw_->StopAudio();
-  hw_->DeInit();
+  // TODO: Add a DeInitCallback that is provided in `Init()` function.
+  // If a deinit callback was provided, call it with the stored context.
+  if (deinit_cb_)
+  {
+    deinit_cb_(deinit_context_);
+  }
   return Result::OK;
 }
 
@@ -206,7 +232,8 @@ uint32_t Bootloader::FillTargetMemory()
     {
       sram_program[i] = qspi_buffer[i];
     }
-    hw_->qspi.DeInit();
+    // hw_->qspi.DeInit();
+    qspi_->DeInit();
     return (uint32_t)sram_program;
   }
   case System::QSPI:
@@ -291,17 +318,22 @@ void Bootloader::ManageLed()
   }
   else if (downloading_binary_ || (dfu_initialized_ && dfu.GetDfuInitiated()))
   {
-    hw_->SetLed(true);
+    // hw_->SetLed(true);
+    if (has_led_)
+      led_.Write(true);
   }
   else
   {
     uint32_t time = System::GetNow();
     if (time > pwm_tick_)
     {
-      pwm_tick_ = time;
-      angle_ += (2 * M_PI / 1000.f) / sine_hz_;
-      bool led = sin(angle_) * sine_fid_ + sine_fid_ - 1 > time % (sine_fid_ * 2);
-      hw_->SetLed(led);
+      if (has_led_) {
+        pwm_tick_ = time;
+        angle_ += (2 * M_PI / 1000.f) / sine_hz_;
+        bool led = sin(angle_) * sine_fid_ + sine_fid_ - 1 > time % (sine_fid_ * 2);
+        // hw_->SetLed(led);
+        led_.Write(led);
+      }
     }
   }
 }
@@ -312,7 +344,10 @@ void Bootloader::TriggerError(uint8_t error_code)
   error_led_ = false;
   error_step_ = 0;
   error_tick_ = System::GetNow();
-  hw_->SetLed(error_led_);
+  // hw_->SetLed(error_led_);
+  if (has_led_) {
+    led_.Write(error_led_);
+  }
   error_code_ = error_code;
 }
 
@@ -324,7 +359,10 @@ void Bootloader::ErrorLed()
     error_step_++;
     error_tick_ = now;
     error_led_ = !error_led_;
-    hw_->SetLed(error_led_);
+    // hw_->SetLed(error_led_);
+    if (has_led_) {
+      led_.Write(error_led_);
+    }
     if (error_step_ >= (uint32_t)(error_code_ * 2) + 1)
     {
       do_error_ = false;
@@ -335,16 +373,19 @@ void Bootloader::ErrorLed()
 
 void Bootloader::HappyLed()
 {
-  uint32_t now = System::GetNow();
-  if ((now - happy_tick_) >= HAPPY_PERIOD_MS)
-  {
-    happy_step_++;
-    happy_tick_ = now;
-    happy_led_ = !happy_led_;
-    hw_->SetLed(happy_led_);
-    if (happy_step_ > HAPPY_BLINKS)
+  if (has_led_) {
+    uint32_t now = System::GetNow();
+    if ((now - happy_tick_) >= HAPPY_PERIOD_MS)
     {
-      do_happy_ = false;
+      happy_step_++;
+      happy_tick_ = now;
+      happy_led_ = !happy_led_;
+      // hw_->SetLed(happy_led_);
+      led_.Write(happy_led_);
+      if (happy_step_ > HAPPY_BLINKS)
+      {
+        do_happy_ = false;
+      }
     }
   }
 }
@@ -364,6 +405,10 @@ void Bootloader::AudioProcess(AudioHandle::InputBuffer in, AudioHandle::OutputBu
 
 void Bootloader::LoopProcess()
 {
+  // Always run this loop -- it will be no-op if the dfu is not busy
+  dfu.ProcessIoRequests();
+
+  // Handle switch case
   switch (state_)
   {
   case State::CHECK_SD:
@@ -648,7 +693,8 @@ Bootloader::FatfsResult Bootloader::LoadFAT(FILINFO *info)
 
       if (data_written % PAGE_SIZE == 0)
       {
-        hw_->qspi.Erase(System::kQspiBootloaderOffset + data_written, System::kQspiBootloaderOffset + data_written + PAGE_SIZE);
+        // hw_->qspi.Erase(System::kQspiBootloaderOffset + data_written, System::kQspiBootloaderOffset + data_written + PAGE_SIZE);
+        qspi_->Erase(System::kQspiBootloaderOffset + data_written, System::kQspiBootloaderOffset + data_written + PAGE_SIZE);
       }
       f_read(&FatfsFile_, sram_program, FILE_BUFF_LEN, &data_read);
 
@@ -667,7 +713,8 @@ Bootloader::FatfsResult Bootloader::LoadFAT(FILINFO *info)
       //     return Result::ERR;
       // }
 
-      hw_->qspi.Write(System::kQspiBootloaderOffset + data_written, data_read, sram_program);
+      // hw_->qspi.Write(System::kQspiBootloaderOffset + data_written, data_read, sram_program);
+      qspi_->Write(System::kQspiBootloaderOffset + data_written, data_read, sram_program);
       data_written += data_read;
     } while (data_read == FILE_BUFF_LEN);
 

@@ -3,7 +3,7 @@
     {
       "cwd": "${workspaceRoot}",
       "device": "STM32H750IB",
-      "executable": "${workspaceRoot}/bootloader/build/main.elf",
+      "executable": "${workspaceRoot}/bootloader/build/dsy_bootloader_v6_4.elf",
       "interface": "swd",
       "name": "Bootloader Debug (J-Link)",
       "osx": {

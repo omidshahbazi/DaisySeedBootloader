@@ -6,6 +6,8 @@ CPP_SOURCES = Blink.cpp
 
 C_INCLUDES += -I. 
 
+APP_MODE=BOOT_SRAM
+
 # Library Locations
 LIBDAISY_DIR = ../libDaisy
 DAISYSP_DIR = ../DaisySP
@@ -13,7 +15,7 @@ DAISYSP_DIR = ../DaisySP
 # Linker
 # APP_TYPE = BOOT_QSPI
 LDSCRIPT = sram_linker.lds
-C_DEFS += -DBOOT_APP
+#C_DEFS += -DBOOT_APP
 
 OPT = -O0
 

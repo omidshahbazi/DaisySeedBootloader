@@ -6,6 +6,17 @@ using namespace daisy;
 DaisySeed hw;
 Bootloader boot;
 
+// Deinit callback for DaisySeed-based build. Stops audio and de-inits the hardware.
+void DaisyDeInitCallback(void* context)
+{
+	DaisySeed* seed = reinterpret_cast<DaisySeed*>(context);
+	if (seed)
+	{
+		seed->StopAudio();
+		seed->DeInit();
+	}
+}
+
 void AudioCallback(AudioHandle::InputBuffer  in,
 				   AudioHandle::OutputBuffer out,
 				   size_t                    size)
@@ -27,7 +38,7 @@ int main(void) {
 
 	SCB_DisableDCache();
 
-	boot.Init(hw, timeout_ms);
+	boot.Init(hw.qspi, Pin(daisy::PORTC, 7), Pin(), timeout_ms, DaisyDeInitCallback, (void*)&hw);
 
 	hw.StartAudio(AudioCallback);
 

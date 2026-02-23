@@ -2,7 +2,7 @@
     "files.associations": {
         "usbd_def.h": "c"
     },
-    "cortex-debug.variableUseNaturalFormat": true,
+    "cortex-debug.variableUseNaturalFormat": false,
     "editor.tokenColorCustomizations": {
         "[*Light*]": {
             "textMateRules": [

@@ -33,6 +33,9 @@ namespace daisy
     idle bootloader. An SOS pattern indicates the application is not
     correctly configured to run from the bootloader.
 */
+// C-style deinit callback: takes a context pointer
+typedef void (*deinit_cb_t)(void*);
+
 class Bootloader
 {
   public:
@@ -57,7 +60,9 @@ class Bootloader
      *
      *  \param seed Pointer to initialized seed hardware class
      */
-    Result Init(DaisySeed &seed, uint32_t timeout);
+  //Result Init(DaisySeed &seed, uint32_t timeout);
+  // New Init accepts an optional deinit callback and context pointer
+  Result Init(QSPIHandle &qspi, Pin led_pin, Pin btn_pin, uint32_t timeout, deinit_cb_t deinit_cb = nullptr, void* deinit_context = nullptr);
 
     /** A separate initialization for IO that takes some time.
      *  Should be called after Init and before any LoopProcess calls.
@@ -143,7 +148,15 @@ class Bootloader
     static constexpr uint32_t HAPPY_PERIOD_MS = 50;
     static constexpr uint32_t ERROR_PERIOD_MS = 200;
 
-    DaisySeed *hw_;
+    // Originally fixed to only work on Daisy Seed
+    // DaisySeed *hw_;
+    // Now abstracted to work with/without LED and using QSPI pointer.
+    QSPIHandle* qspi_;
+  // Optional deinit callback and context supplied at Init()
+  deinit_cb_t deinit_cb_;
+  void* deinit_context_;
+    bool has_led_;
+    GPIO led_;
 
     DFUHandle dfu;
 
@@ -177,9 +190,11 @@ class Bootloader
 /** @} */
 
 /** This function handles the bootloader startup before any other initialization
+ * \param ext_qspi_cfg If left null, this will use the normal Daisy Seed QSPI pinout
+ *   otherwise, the pin_config provided here will be used instead.
  * \returns Timeout length
 */
-uint32_t startup_process();
+uint32_t startup_process(QSPIHandle::Config* ext_qspi_cfg=nullptr);
 
 } // namespace daisy
 

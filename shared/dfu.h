@@ -46,6 +46,13 @@ class DFUHandle
     /** Returns true if a DFU transaction has been initiated */
     bool GetDfuInitiated();
 
+    /** Method to call within main() while loop, or other
+     *  low-priority callback that can be interrupted.
+     *
+     *  This method performs the actual disk I/O for the QSPI
+     */
+    bool ProcessIoRequests();
+
     DFUHandle() : pimpl_(nullptr) {}
     DFUHandle(const DFUHandle &other) = default;
     DFUHandle &operator=(const DFUHandle &other) = default;
