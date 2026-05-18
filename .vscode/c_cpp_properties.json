@@ -1,62 +1,64 @@
 {
-  "configurations": [
-    {
-      "cStandard": "c11",
-      "compilerPath": "arm-none-eabi-g++.exe",
-      "cppStandard": "c++17",
-      "defines": [
-        "_DEBUG",
-        "UNICODE",
-        "_UNICODE"
-      ],
-      "includePath": [
-        "${workspaceFolder}/bootloader/**",
-        "${workspaceFolder}/libDaisy/**",
-        "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/**",
-        "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/**",
-        "${workspaceFolder}/cube_dfu/Middlewares/Third_Party/FatFS/src/",
-        "${workspaceFolder}/cube_dfu/USB_DEVICE/**",
-        "${workspaceFolder}/cube_dfu/FATFS/**"
-      ],
-      "name": "Win32",
-      "windowsSdkVersion": "10.0.17763.0"
-    },
-    {
-      "name": "Mac",
-      "includePath": [
-        "${workspaceRoot}/DaisySP/Source/**",
-        "${workspaceRoot}/libDaisy/src/**",
-        // new libDaisy
-        "${workspaceRoot}/libDaisy/Drivers/STM32H7xx_HAL_Driver/Inc/",
-        "${workspaceRoot}/libDaisy/Drivers/STM32H7xx_HAL_Driver/Src/",
-        // "${workspaceRoot}/libDaisy/Drivers/CMSIS_5/CMSIS/Core/Include/",
-        // "${workspaceRoot}/libDaisy/Drivers/CMSIS-Device/ST/STM32H7xx/Include/",
-        "${workspaceRoot}/libDaisy/Middlewares/ST/STM32_USB_Host_Library/Core/Inc/",
-        "${workspaceRoot}/libDaisy/Middlewares/Third_Party/FatFs/src/",
-        "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/**",
-        "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/**",
-        "${workspaceFolder}/cube_dfu/Middlewares/Third_Party/FatFS/src/",
-        "${workspaceFolder}/cube_dfu/USB_DEVICE/**",
-        "${workspaceFolder}/cube_dfu/FATFS/**",
-        "${workspaceRoot}/bootloader/src/"
-      ],
-      "defines": [
-        "STM32H750xx",
-        "USE_HAL_DRIVER",
-        "CORE_CM7",
-        "ARM_MATH_CM7",
-        "__CC_ARM",
-        "_DEBUG",
-        "UNICODE",
-        "_UNICODE",
-        "DSY_DFU_USE_EXT_USB=1"
-      ],
-      "cStandard": "c17",
-      "cppStandard": "c++17",
-      // TODO - make separate config for arm-target compilation?
-      "compilerPath": "/Applications/ArmGNUToolchain/12.3.rel1/arm-none-eabi/bin/arm-none-eabi-g++",
-      "intelliSenseMode": "macos-clang-x64"
-    }
-  ],
-  "version": 4
+    "configurations": [
+        {
+            "cStandard": "c11",
+            "compilerPath": "arm-none-eabi-g++.exe",
+            "cppStandard": "c++17",
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "includePath": [
+                "${workspaceRoot}/libDaisy/src/**",
+                "${workspaceRoot}/libDaisy/Drivers/STM32H7xx_HAL_Driver/Inc/",
+                "${workspaceRoot}/libDaisy/Drivers/STM32H7xx_HAL_Driver/Src/",
+                "${workspaceRoot}/libDaisy/Drivers/CMSIS/Include/",
+                "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/**",
+                "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/**",
+                "${workspaceFolder}/cube_dfu/Middlewares/Third_Party/FatFS/src/",
+                "${workspaceFolder}/cube_dfu/USB_DEVICE/**",
+                "${workspaceFolder}/cube_dfu/FATFS/**",
+                "${workspaceRoot}/shared/",
+                "${workspaceRoot}/bootloader/"
+            ],
+            "name": "Win32",
+            "windowsSdkVersion": "10.0.17763.0"
+        },
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceRoot}/libDaisy/src/**",
+                "${workspaceRoot}/libDaisy/Drivers/STM32H7xx_HAL_Driver/Inc/",
+                "${workspaceRoot}/libDaisy/Drivers/STM32H7xx_HAL_Driver/Src/",
+                "${workspaceRoot}/libDaisy/Drivers/CMSIS/Include/",
+                "${workspaceRoot}/libDaisy/Middlewares/ST/STM32_USB_Host_Library/Core/Inc/",
+                "${workspaceRoot}/libDaisy/Middlewares/Third_Party/FatFs/src/",
+                "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/**",
+                "${workspaceFolder}/cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Core/**",
+                "${workspaceFolder}/cube_dfu/Middlewares/Third_Party/FatFS/src/",
+                "${workspaceFolder}/cube_dfu/USB_DEVICE/**",
+                "${workspaceFolder}/cube_dfu/FATFS/**",
+                "${workspaceRoot}/shared/",
+                "${workspaceRoot}/bootloader/"
+            ],
+            "defines": [
+                "STM32H750xx",
+                "USE_HAL_DRIVER",
+                "CORE_CM7",
+                "ARM_MATH_CM7",
+                "__CC_ARM",
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "DSY_DFU_USE_EXT_USB=1"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            // TODO - make separate config for arm-target compilation?
+            "compilerPath": "/Applications/ArmGNUToolchain/12.3.rel1/arm-none-eabi/bin/arm-none-eabi-g++",
+            "intelliSenseMode": "macos-clang-x64"
+        }
+    ],
+    "version": 4
 }

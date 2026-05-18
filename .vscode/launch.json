@@ -1,120 +1,178 @@
 {
-  "configurations": [
-    {
-      "cwd": "${workspaceRoot}",
-      "device": "STM32H750IB",
-      "executable": "${workspaceRoot}/bootloader/build/dsy_bootloader_v6_4.elf",
-      "interface": "swd",
-      "name": "Bootloader Debug (J-Link)",
-      "osx": {
-        "armToolchainPath": "/Applications/ArmGNUToolchain/12.3.rel1/arm-none-eabi/bin",
-        "serverpath": "/Applications/SEGGER/JLink/JLinkGDBServerCLExe"
-      },
-      "preLaunchTask": "Build Project",
-      "request": "launch",
-      "rttConfig": {
-        "address": "auto",
-        "decoders": [
-          {
-            "port": 0.000000,
-            "type": "console"
-          }
-        ],
-        "enabled": true
-      },
-      "runToEntryPoint": "main",
-      "serialNumber": "",
-      "servertype": "jlink",
-      "svdFile": "${workspaceFolder}/.vscode/STM32H750x.svd",
-      "type": "cortex-debug",
-    },
-    {
-      "cwd": "${workspaceRoot}",
-      "device": "STM32H750IB",
-      "executable": "${workspaceRoot}/TestApp/build/TestApp.elf",
-      "interface": "swd",
-      "name": "Test App Debug (Launch)",
-      "osx": {
-        "armToolchainPath": "/Applications/ArmGNUToolchain/12.3.rel1/arm-none-eabi/bin",
-        "serverpath": "/Applications/SEGGER/JLink/JLinkGDBServerCLExe"
-      },
-      "preLaunchTask": "Build Project",
-      "request": "launch",
-      "rttConfig": {
-        "address": "auto",
-        "decoders": [
-          {
-            "port": 0.000000,
-            "type": "console"
-          }
-        ],
-        "enabled": true
-      },
-      "runToEntryPoint": "main",
-      "serialNumber": "",
-      "servertype": "jlink",
-      "svdFile": "${workspaceFolder}/.vscode/STM32H750x.svd",
-      "type": "cortex-debug",
-    },
-    {
-      "cwd": "${workspaceRoot}",
-      "device": "STM32H750IB",
-      "executable": "${workspaceRoot}/TestApp/build/TestApp.elf",
-      "interface": "swd",
-      "name": "Test App Debug (Attach)",
-      "osx": {
-        "armToolchainPath": "/Applications/ArmGNUToolchain/12.3.rel1/arm-none-eabi/bin",
-        "serverpath": "/Applications/SEGGER/JLink/JLinkGDBServerCLExe"
-      },
-      "preLaunchTask": "Build Project",
-      "request": "attach",
-      "rttConfig": {
-        "address": "auto",
-        "decoders": [
-          {
-            "port": 0.000000,
-            "type": "console"
-          }
-        ],
-        "enabled": true
-      },
-      "runToEntryPoint": "main",
-      "serialNumber": "",
-      "servertype": "jlink",
-      "svdFile": "${workspaceFolder}/.vscode/STM32H750x.svd",
-      "type": "cortex-debug",
-    },
-    {
-      "configFiles": [
-        "interface/stlink.cfg",
-        "target/stm32h7x.cfg"
-      ],
-      "cwd": "${workspaceFolder}",
-      "debuggerArgs": [
-        "-d",
-        "${workspaceRoot}"
-      ],
-      "executable": "${workspaceRoot}/bootloader/build/main.elf",
-      // "executable": "${workspaceRoot}/QspiTests/build/main.elf",
-      "interface": "swd",
-      "name": "Cortex Debug",
-      "openOCDLaunchCommands": [
-        "init",
-        "reset init"
-      ],
-      // "preLaunchTask": "build_all_debug",
-      "preRestartCommands": [
-        "load",
-        "enable breakpoint",
-        "monitor reset"
-      ],
-      "request": "launch",
-      "runToEntryPoint": "main",
-      "servertype": "openocd",
-      "showDevDebugOutput": true,
-      "svdFile": "${workspaceRoot}/.vscode/STM32H750x.svd",
-      "type": "cortex-debug"
-    }
-  ],
-  "version": "0.2.0"
+    "configurations": [
+        {
+            "name": "Debug Bootloader (J-Link)",
+            "cwd": "${workspaceRoot}",
+            "device": "STM32H750IB",
+            "executable": "${workspaceRoot}/bootloader/build/dsy_bootloader_v6_4.elf",
+            "interface": "swd",
+            "osx": {
+                "armToolchainPath": "/Applications/ArmGNUToolchain/12.3.rel1/arm-none-eabi/bin",
+                "serverpath": "/Applications/SEGGER/JLink/JLinkGDBServerCLExe"
+            },
+            "preLaunchTask": "Build Bootloader",
+            "request": "launch",
+            "rttConfig": {
+                "address": "auto",
+                "decoders": [
+                    {
+                        "port": 0.000000,
+                        "type": "console"
+                    }
+                ],
+                "enabled": true
+            },
+            "runToEntryPoint": "main",
+            "serialNumber": "",
+            "servertype": "jlink",
+            "svdFile": "${workspaceFolder}/.vscode/STM32H750x.svd",
+            "type": "cortex-debug",
+        },
+        {
+            "name": "Debug Bootloader (ST-Link)",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32h7x.cfg"
+            ],
+            "cwd": "${workspaceFolder}",
+            "debuggerArgs": [
+                "-d",
+                "${workspaceRoot}"
+            ],
+            "executable": "${workspaceRoot}/bootloader/build/dsy_bootloader_v6_4.elf",
+            "interface": "swd",
+            "openOCDLaunchCommands": [
+                "init",
+                "reset init",
+                "gdb_breakpoint_override hard"
+            ],
+            "preRestartCommands": [
+                "load",
+                "enable breakpoint",
+                "monitor reset"
+            ],
+            "preLaunchTask": "Build Bootloader",
+            "request": "launch",
+            "runToEntryPoint": "main",
+            "servertype": "openocd",
+            "showDevDebugOutput": "both",
+            "svdFile": "${workspaceRoot}/.vscode/STM32H750x.svd",
+            "type": "cortex-debug",
+        },
+        {
+            "name": "Debug Blink (J-Link)",
+            "cwd": "${workspaceRoot}",
+            "device": "STM32H750IB",
+            "executable": "${workspaceRoot}/examples/blink/build/blink.elf",
+            "interface": "swd",
+            "osx": {
+                "armToolchainPath": "/Applications/ArmGNUToolchain/12.3.rel1/arm-none-eabi/bin",
+                "serverpath": "/Applications/SEGGER/JLink/JLinkGDBServerCLExe"
+            },
+            "request": "launch",
+            "rttConfig": {
+                "address": "auto",
+                "decoders": [
+                    {
+                        "port": 0.000000,
+                        "type": "console"
+                    }
+                ],
+                "enabled": true
+            },
+            "runToEntryPoint": "main",
+            "serialNumber": "",
+            "servertype": "jlink",
+            "svdFile": "${workspaceFolder}/.vscode/STM32H750x.svd",
+            "type": "cortex-debug",
+        },
+        {
+            "name": "Debug Blink (ST-Link)",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32h7x.cfg"
+            ],
+            "cwd": "${workspaceFolder}",
+            "debuggerArgs": [
+                "-d",
+                "${workspaceRoot}"
+            ],
+            "executable": "${workspaceRoot}/examples/blink/build/blink.elf",
+            "interface": "swd",
+            "openOCDLaunchCommands": [
+                "init",
+                "reset init",
+                "gdb_breakpoint_override hard"
+            ],
+            "preRestartCommands": [
+                "load",
+                "enable breakpoint",
+                "monitor reset"
+            ],
+            "request": "launch",
+            "runToEntryPoint": "main",
+            "servertype": "openocd",
+            "showDevDebugOutput": "both",
+            "svdFile": "${workspaceRoot}/.vscode/STM32H750x.svd",
+            "type": "cortex-debug",
+        },
+        {
+            "name": "Debug Oscillator (J-Link)",
+            "cwd": "${workspaceRoot}",
+            "device": "STM32H750IB",
+            "executable": "${workspaceRoot}/examples/oscillator/build/Oscillator.elf",
+            "interface": "swd",
+            "osx": {
+                "armToolchainPath": "/Applications/ArmGNUToolchain/12.3.rel1/arm-none-eabi/bin",
+                "serverpath": "/Applications/SEGGER/JLink/JLinkGDBServerCLExe"
+            },
+            "request": "launch",
+            "rttConfig": {
+                "address": "auto",
+                "decoders": [
+                    {
+                        "port": 0.000000,
+                        "type": "console"
+                    }
+                ],
+                "enabled": true
+            },
+            "runToEntryPoint": "main",
+            "serialNumber": "",
+            "servertype": "jlink",
+            "svdFile": "${workspaceFolder}/.vscode/STM32H750x.svd",
+            "type": "cortex-debug",
+        },
+        {
+            "name": "Debug Oscillator (ST-Link)",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32h7x.cfg"
+            ],
+            "cwd": "${workspaceFolder}",
+            "debuggerArgs": [
+                "-d",
+                "${workspaceRoot}"
+            ],
+            "executable": "${workspaceRoot}/examples/oscillator/build/oscillator.elf",
+            "interface": "swd",
+            "openOCDLaunchCommands": [
+                "init",
+                "reset init",
+                "gdb_breakpoint_override hard"
+            ],
+            "preRestartCommands": [
+                "load",
+                "enable breakpoint",
+                "monitor reset"
+            ],
+            "request": "attach",
+            "runToEntryPoint": "main",
+            "servertype": "openocd",
+            "showDevDebugOutput": "both",
+            "svdFile": "${workspaceRoot}/.vscode/STM32H750x.svd",
+            "type": "cortex-debug",
+        },
+    ],
+    "version": "0.2.0"
 }

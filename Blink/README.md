@@ -1,4 +1,0 @@
-# Blink
-
-it blink
-
