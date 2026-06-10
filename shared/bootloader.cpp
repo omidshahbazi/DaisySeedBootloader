@@ -138,11 +138,10 @@ Bootloader::Result Bootloader::Init(QSPIHandle& qspi, Pin led_pin, Pin btn_pin, 
   happy_step_ = 0;
   happy_tick_ = 0;
 
-  // dsy_gpio_pin button{dsy_gpio_port::DSY_GPIOG, 3};
   if (btn_pin.IsValid()) {
     boot_button_.Init(btn_pin);
   } else {
-    dsy_gpio_pin button{dsy_gpio_port::DSY_GPIOG, 3};
+    auto button = Pin(PORTG, 3);
     boot_button_.Init(button, 1000, Switch::TYPE_MOMENTARY, Switch::POLARITY_NORMAL, GPIO::Pull::NOPULL);
   }
 
