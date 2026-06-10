@@ -143,7 +143,7 @@ Bootloader::Result Bootloader::Init(QSPIHandle& qspi, Pin led_pin, Pin btn_pin, 
     boot_button_.Init(btn_pin);
   } else {
     dsy_gpio_pin button{dsy_gpio_port::DSY_GPIOG, 3};
-    boot_button_.Init(button, 1000, Switch::TYPE_MOMENTARY, Switch::POLARITY_NORMAL, Switch::PULL_NONE);
+    boot_button_.Init(button, 1000, Switch::TYPE_MOMENTARY, Switch::POLARITY_NORMAL, GPIO::Pull::NOPULL);
   }
 
   boot_button_pressed_ = false;

@@ -22,8 +22,8 @@ static uint8_t __attribute__((section(".dtcmram_bss"))) gDfuWriteBuffer[kMaxDfuP
 
 extern "C"
 {
-    USBD_HandleTypeDef hUsbDeviceFS;
-    USBD_HandleTypeDef hUsbDeviceHS;
+    extern USBD_HandleTypeDef hUsbDeviceFS;
+    extern USBD_HandleTypeDef hUsbDeviceHS;
     extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
     extern PCD_HandleTypeDef hpcd_USB_OTG_HS;
     void enable_jump();
@@ -525,21 +525,3 @@ bool DFUHandle::ProcessIoRequests()
     return (bool)pimpl_->ProcessIoRequests();
 }
 
-// IRQ Handler
-extern "C"
-{
-    void OTG_FS_EP1_OUT_IRQHandler(void)
-    {
-        HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
-    }
-
-    void OTG_FS_EP1_IN_IRQHandler(void)
-    {
-        HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
-    }
-
-    void OTG_FS_IRQHandler(void)
-    {
-        HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
-    }
-}

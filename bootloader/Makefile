@@ -50,6 +50,7 @@ $(wildcard ../shared/*.cpp)
 
 # moved bootloader related files into the shared/ dir so other "custom" bootloaders are easier to manage..
 #$(wildcard src/*.cpp)
+LIBDAISY_DIR = ../libDaisy
 
 USE_FATFS = 1
 
@@ -57,26 +58,25 @@ C_INCLUDES = -Isrc \
 						 -I../shared
 
 C_SOURCES += \
-../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Src/usbd_dfu.c \
-../cube_dfu/USB_DEVICE/App/usbd_desc.c
+$(LIBDAISY_DIR)/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Src/usbd_dfu.c \
+../shared/usbd_desc.c
 
 C_INCLUDES += \
 -I. \
--I../cube_dfu/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc \
--I../cube_dfu/USB_DEVICE/App
+-I$(LIBDAISY_DIR)/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc 
 
 C_INCLUDES += $(EXTRA_C_DEFS)
 
 LDSCRIPT = boot_linker.lds
 
 # WARNING -- an opt of -O3 causes the jump to fail and makes USB connectivity unreliable
-OPT = -O0
+OPT = -O2
 DEBUG=1
 
 # CFLAGS += -DUSBD_SUPPORT_USER_STRING_DESC=1
 
 # Library Locations
-LIBDAISY_DIR = ../libDaisy
+
 
 # Core location, and generic Makefile.
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
